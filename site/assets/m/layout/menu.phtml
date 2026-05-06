@@ -1,0 +1,61 @@
+<?
+	?>
+
+<div class="preloader_frame div_100"><img class="preloader_img" src="/assets/i/ring-alt.svg"></div>
+<div class="header">
+    <a href='/' title="ЖК Зорге 9" class="logo pjax"></a>
+    <a class="menu_call_btn" href="tel:+74951507537"></a>
+    <div class="menu_open_btn">
+        <div class="line n0"></div>
+        <div class="line n1"></div>
+        <div class="line n2"></div>
+    </div>
+</div>
+<div class="menu_frame">
+    <div class="menu_list scroll">
+        <?
+            $menu_items=$this->findById(1)->children();
+            $no_submenu = array(2, 7, 14, 18, 47, 80, 155, 132, 420, 502, 560, 609, 575, 549, 1032, 382, 2228, 2238);
+            $no_parent = array(4, 17, 14);
+            $menu_html = '';
+
+            foreach ($menu_items as $key => $value) {
+                $submenu_id = $value->id();
+                $label = $value -> hasContent('label') ? ' label' : '';
+                if($submenu_id == 19) {
+                    $submenu_html = '<a class="menu_link pjax" href="/construction">Фотоотчеты</a>';
+                    if ($this->findById(382)->status_id == 100) {
+                         $submenu_html .= '<a class="menu_link pjax" href="/webcam">Видеотрансляция</a>';
+                    }
+                } else
+                if($submenu_id!=0 && !in_array($submenu_id, $no_submenu)) {
+                    $submenu_html = get_submenu_txt($submenu_id, !in_array($submenu_id, $no_parent), false);
+                } else {
+                    $submenu_html = '';
+                }
+                if($submenu_html != '') {
+                    $menu_html.='<div class="menu_item with-submenu"><div class="menu_link">'.$value->title().'</div>';
+                    $menu_html .= '<div class="menu_submenu">'.$submenu_html.'</div>';
+                } else {
+                    $menu_html.='<div class="menu_item"><a class="menu_link '.
+                        'pjax' .' '.$label.'" href="'.
+                        (($value->id() == 7) ? '/plans/search' : $value->url()).'">'.$value->title().'</a>';
+                }
+                $menu_html .= '</div>';
+            }
+            echo $menu_html;
+        ?>
+        <div class="social">
+            <div class="social__item"><a href="https://vk.com/zorge9" title="ВК Зорге 9" target="_blank" class="social__link vk"></a></div>
+            <!-- <div class="social__item"><a href="https://www.instagram.com/zorge9/" target="_blank" class="social__link inst"></a></div>
+            <div class="social__item"><a href="https://www.facebook.com/zorge9/" target="_blank" class="social__link fb"></a></div> -->
+
+            <div class="social__item"><a href="https://www.youtube.com/c/%D0%97%D0%BE%D1%80%D0%B3%D0%B59" title="Youtube Зорге 9" target="_blank" class="social__link youtube"></a></div>
+            <div class="social__item"><a href="https://zen.yandex.ru/zorge9" title="Яндекс Дзен Зорге 9" target="_blank" class="social__link yandexdzen"></a></div>
+            <div class="social__item"><a href="https://t.me/stmichael_developer" title="Telegram Зорге 9" target="_blank" class="social__link telegram"></a></div>
+            <div class="social__item"><a href="https://api.whatsapp.com/send?phone=79261678835" title="WhatsApp Зорге 9" target="_blank" class="social__link wp"></a></div>
+        </div>
+        <div class="h1em"></div>
+    </div>
+    <a href="http://art3d.ru" title="Art3d Зорге 9" rel="nofollow" target="_blank" class="art3d"></a>
+</div>

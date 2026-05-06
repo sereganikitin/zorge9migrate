@@ -10,3 +10,20 @@ files/
 logs/
 db/
 configs/
+
+# Временные/локальные артефакты процесса миграции
+tmp/
+*.padfix-bak
+*.padfix2-bak
+*.embed-bak
+*.landings-bak
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Локальные артефакты deploy (НЕ в репо!)
+.deploy-secrets/
+

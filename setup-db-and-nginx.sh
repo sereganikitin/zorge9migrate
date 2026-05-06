@@ -113,7 +113,12 @@ server {
     }
 
     location / {
-        try_files $uri $uri/ /index.php?WOLFPAGE=$uri&$args;
+        try_files $uri $uri/ @wolf;
+    }
+
+    # Wolf CMS dispatcher: WOLFPAGE без ведущего слэша (как было в .htaccess).
+    location @wolf {
+        rewrite ^/(.*)$ /index.php?WOLFPAGE=$1&$args last;
     }
 
     location /index {
@@ -124,14 +129,17 @@ server {
     location ~ /\.ht { deny all; }
     location ~ .*\.(htaccess|htpasswd|ini|fla|psd|log|sh|sqlite|sq3|git|gitignore|svn)$ { deny all; }
 
+    # PDF-rewrite только для GET (POST не трогаем — иначе теряется тело формы).
+    if ($request_method = GET) {
+        set $maybe_rewrite "1";
+    }
     if (!-e $request_filename) {
+        set $maybe_rewrite "${maybe_rewrite}1";
+    }
+    if ($maybe_rewrite = "11") {
         rewrite ^/pdf/([^\/]*)\.pdf$ /hydra/pdf/cache/booklets/$1.pdf break;
-    }
-    if (!-e $request_filename) {
         rewrite ^/pdf/download/([^\/]*).pdf$ /hydra/pdf/downloader.php?filename=$1.pdf break;
-    }
-    if (!-e $request_filename) {
-        rewrite ^/(.*)(/)$ /$1 permanent;
+        # trailing-slash strip убран: 301 при POST превращает запрос в GET и теряет тело.
     }
 }
 NGINX_EOF

@@ -1,0 +1,62 @@
+name: Deploy site to production
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "${{ secrets.KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Sanity check (server reachable)
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+              -o UserKnownHostsFile=~/.ssh/known_hosts \
+              ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+              "echo connected as \$(whoami) on \$(hostname); test -d ${{ secrets.DEPLOY_PATH }}"
+
+      - name: Rsync site/ to server
+        # NB: --delete is INTENTIONALLY NOT USED — we track only a subset of htdocs.
+        # Without --delete rsync only adds/updates files; never removes anything on server.
+        run: |
+          rsync -avz --human-readable \
+            --exclude='*.bak' --exclude='*.bak-*' --exclude='*.padfix-bak' --exclude='*.padfix2-bak' \
+            --exclude='*.embed-bak' --exclude='*.landings-bak' --exclude='.DS_Store' \
+            -e "ssh -i ~/.ssh/deploy_key -o UserKnownHostsFile=~/.ssh/known_hosts" \
+            site/ \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PATH }}
+
+      - name: Fix ownership (www-data) + reload PHP-FPM
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+              -o UserKnownHostsFile=~/.ssh/known_hosts \
+              ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+              "chown -R www-data:www-data ${{ secrets.DEPLOY_PATH }}assets ${{ secrets.DEPLOY_PATH }}promo && systemctl reload php8.3-fpm && echo deployed: \$(date -u +%FT%TZ)"
+
+      - name: Smoke test
+        run: |
+          for url in / /office /pent /retail; do
+            code=$(curl -sk -o /dev/null -w '%{http_code}' "https://zorge9.infoseledka.ru$url")
+            echo "  $url HTTP $code"
+            test "$code" = "200" || (echo "FAIL $url"; exit 1)
+          done

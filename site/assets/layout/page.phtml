@@ -1,0 +1,258 @@
+<?php
+
+global $mobile;
+global $src_path;
+global $time_now;
+global $domain;
+global $data_folder;
+global $hide_price;
+global $hide_price_com;
+global $HOST;
+include 'assets/' . $src_path . 'css/version.php';
+$css_version = $version;
+include 'assets/' . $src_path . 'js/version.php';
+$js_version = $version;
+$sitename = Setting::get('admin_title');
+$breadcrumb = $this->breadcrumb();
+$keywords = $this->keywords();
+$description = $this->description();
+$id = $this->id();
+$url = $this->url();
+$custom_template = '';
+$hide_price = page::findById(1)->hasContent('hide_price');
+$hide_price_com = page::findById(1)->hasContent('hide_price_com');
+
+if ($id == 1) {
+    $slug = 'home';
+    $template = $slug;
+    $title = $sitename;
+} else {
+    $slug = $this->slug();
+    $template = $slug;
+    $page_title = $this->title();
+    $parent = $this->parent();
+    $parent_id = $parent->id();
+
+	if (isset($this->plans_info) && !$this->plans_info['flat'] && $mobile && $url !== '/retail/commercial-plans' && $url !== '/retail/commercial-rent') {
+		header('Location: /plans/search');
+	}
+
+    if (isset($this->plans_info) && isset($this->plans_info['korpus']) && $this->plans_info['korpus'] != NULL) {
+
+        if (isset($this->plans_info['flat']) && $this->plans_info['flat'] != NULL) {
+            $custom_template = ' opened_apart';
+        } else
+        if (isset($this->plans_info['floor']) && $this->plans_info['floor'] != NULL) {
+            $custom_template = ' opened_floor';
+        } else {
+            $custom_template = ' closed_floor';
+        };
+
+        if ($this->plans_info['uri'] == 'retail/commercial-plans' || $this->plans_info['uri'] == 'retail/commercial-rent') {
+            $template = 'commercial-plans';
+        } else
+        if ($parent_id == 155) {
+            $template = 'storage-plans';
+        } else
+        if ($parent_id == 132) {
+            $template = 'parking-plans';
+        } else
+		if ($mobile && ($id === '151'|| $id === '152'|| $id === '153')) {
+			$slug = 'search';
+			$template = $slug;
+		} else {
+            $template = 'plans';
+        }
+
+    } else
+    if ($parent_id == 18) {
+        $template = 'news';
+    } else
+    if ($parent_id == 15) {
+        $template = 'vtour-pano';
+    } else
+    if ($parent_id == 19) {
+        $template = 'construction';
+    } else
+    if ($parent_id == 14) {
+        $template = 'gallery_album';
+    } else
+    if ($parent_id == 609) {
+        $template = 'decoration_album';
+    } else
+    if($parent_id == 748 || $parent_id == 617 || ($parent_id == 112 && $id != 536 && $id != 81)) {
+        $template = 'offer';
+    } else
+    if($slug == 'pool-beach-fitness') {
+        $template = 'fitness';
+    } else
+    if ($id == 1366) {
+        $template = 'search';
+    } else
+    if ($id == 1397) {
+        $template = 'commercial';
+    } else
+    if ($id == 2058) {
+        $template = 'commercial-plans';
+    } else
+    if ($id == 2238) {
+        $template = 'landing-office';
+    } else
+    if ($id == 2228) {
+        $template = 'landing-pent';
+    } else
+    if ($id == 80)   {
+        $template = 'landing-commercial';
+    } else
+	if ($mobile && $id === '7') {
+		$slug = 'search';
+		$template = $slug;
+	}
+
+    $title = $page_title . ' - ' . $sitename;
+}
+if($parent_id == 382) {
+    $template = 'webcam';
+}
+if ($breadcrumb != '' && $breadcrumb != $this->title()) {
+    $title = $breadcrumb;
+}
+$title = htmlspecialchars_decode($title);
+
+// Автогенерация title и description для новостей по шаблону;
+if($parent_id == 18) {
+	$titleTemplate = Page::findById(18)->content('title_template');
+	$descriptionTemplate = Page::findById(18)->content('description_template');
+	$title = htmlspecialchars(sprintf($titleTemplate, $this->title(), $this->created_on), ENT_QUOTES);
+	$description = htmlspecialchars(sprintf($descriptionTemplate, $this->title()), ENT_QUOTES);
+}
+
+// автогенерация title и description для корпусов;
+if(in_array($id, [151, 152, 153])) {
+	$jsonFile = file_get_contents(CMS_ROOT . DS . $data_folder . DS . 'data.json');
+	$json = json_decode($jsonFile, true);
+
+	$korpusTitle = "%s в жилом комплексе Zorge9 — апартаменты от %s ₽, площади %s";
+	$korpusDescription = "Апартаменты в %s (Жилой комплекс Zorge9), бизнес-класс. Срок готовности: дом сдан. Площади %s, от %s ₽, 7 мин пешком от метро Зорге. Онлайн-подбор.";
+
+	$korpusNames = [
+		1 => "Madison",
+		2 => "Manhattan",
+		3 => "Soho"
+	];
+
+	$priceFrom = $json["buildings"][$this->plans_info["korpus"]]["tc"]["min"];
+
+	$korpusName = $korpusNames[$this->plans_info["korpus"]];
+
+	$areaFrom = $json["buildings"][$this->plans_info["korpus"]]["sq"]["min"];
+	$areaTo = $json["buildings"][$this->plans_info["korpus"]]["sq"]["max"];
+	$areaRange = $areaFrom . "-" . $areaTo . "м²";
+
+	$title = sprintf($korpusTitle, $korpusName, $priceFrom, $areaRange);
+	$description = sprintf($korpusDescription, $korpusName, $areaRange, $priceFrom);
+}
+
+// автогенерация title и description для этажей;
+if ($this->plans_info["floor"] && !$this->plans_info["flat"] && $id != 154) {
+	$jsonFile = file_get_contents(CMS_ROOT . DS . $data_folder . DS . 'data.json');
+	$json = json_decode($jsonFile, true);
+
+	$korpusNames = [
+		1 => "Madison",
+		2 => "Manhattan",
+		3 => "Soho"
+	];
+	$korpusName = $korpusNames[$this->plans_info["korpus"]];
+	$minCost = $json["floors"][$this->plans_info["korpus"] . "-" . $this->plans_info["floor"]]["mintc"] . " ₽";
+
+	$floorTitle = "%s этаж корпуса %s - выбрать апартаменты в ЖК Зорге 9";
+	$floorDescription = "Большой выбор Апартаментов на %s этаже корпуса %s жилого комплекса Зорге 9, площадь: 55–77  м², цены от %s";
+
+	$title = sprintf($floorTitle, $this->plans_info["floor"], $korpusName);
+	$description = sprintf($floorDescription, $this->plans_info["floor"], $korpusName, $minCost);
+}
+
+// автогенерация title и description для квартир;
+if ($this->plans_info["flat"] && $id != 154) {
+	$jsonFile = file_get_contents(CMS_ROOT . DS . $data_folder . DS . 'data.json');
+	$json = json_decode($jsonFile, true);
+
+	$alt = implode("-", [$this->plans_info["korpus"], $this->plans_info["floor"], $this->plans_info["flat"]]);
+	$roomsShort = $json["apartments"][$alt]["rc"] . "-комнатные";
+	$number = $json["apartments"][$alt]["tr_n"];
+
+	$roomsFull = [
+		0 => "Однокомнатные",
+		1 => "Однокомнатные",
+		2 => "Двухкомнатные",
+		3 => "Трехкомнатные",
+		4 => "Четырехкомнатные",
+	][$json["apartments"][$alt]["rc"]];
+
+	$areaTotal = $json["apartments"][$alt]["sq"] . "м²";
+
+	$buildingName = [
+		1 => "Madison",
+		2 => "Manhattan",
+		3 => "Soho"
+	][$this->plans_info["korpus"]];
+	$price = $json["apartments"][$alt]["tc"] . "₽";
+
+	$flatTitle = "%s апартаменты №%s площадью %s в Жилом комплексе Zorge9 в Москве, корпус %s — купить за  %s";
+	$flatDescription = "%s апартаменты площадью %s, этаж %s/%s, в центре Москвы в Жилом комплексе Zorge9 - %s по цене %s. Онлайн-бронирование";
+
+	$title = sprintf($flatTitle, $roomsShort, $number, $areaTotal, $buildingName, $price);
+	$description = sprintf($flatDescription,
+		$roomsFull,
+		$areaTotal,
+		$this->plans_info["floor"],
+		$json["buildings"][$this->plans_info["korpus"]]["maxf"],
+		$buildingName,
+		$price
+	);
+}
+
+ob_start();
+if (!$mobile) {
+    include 'assets/layout/page_bg.phtml';
+}
+$bg_content = ob_get_clean();
+ob_start();
+$seo = null;
+if (Page::findById($id)->content('seo_block')) {
+	$seo = true;
+}
+if ($seo && !$mobile) {
+	include 'assets/layout/seo_block.phtml';
+}
+include 'assets/' . $src_path . 'pages/' . $template . '.phtml';
+$content = ob_get_clean();
+
+if (!isset($_SERVER['HTTP_X_PJAX'])) {
+    include 'assets/layout/header.phtml';
+    echo '
+        <div class="div_100" id="centrer1"></div>
+        <div class="div_100" id="centrer2">
+            <div class="load_frame_content div_100">
+                <div class="load_frame ' . $template . '_frame' . $custom_template . '">
+                    <div class="resizable div_100">' . $bg_content . '</div>
+                    <div class="not-resizable div_100">' . $content . '</div>
+                </div>
+            </div>';
+    include 'assets/' . $src_path . 'layout/menu.phtml';
+    echo '</div>';
+    include 'assets/layout/footer.phtml';
+} else {
+    echo json_encode(array(
+        'title' => $title,
+        'keywords' => $keywords,
+        'description' => $description,
+        'url' => $url,
+        'slug' => $slug,
+        'template' => $template,
+        'custom_template' => $custom_template,
+        'bg_content' => $bg_content,
+        'content' => $content
+    ));
+}
