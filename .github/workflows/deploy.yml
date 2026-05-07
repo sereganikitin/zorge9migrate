@@ -37,21 +37,23 @@ jobs:
 
       - name: Rsync site/ to server
         # NB: --delete is INTENTIONALLY NOT USED — we track only a subset of htdocs.
-        # Without --delete rsync only adds/updates files; never removes anything on server.
+        # --chown ставит владельца www-data:www-data сразу при копии (требует root на dst, у нас он есть).
+        # --itemize-changes печатает список изменённых файлов в "step output" — удобно для логов deploy.
         run: |
-          rsync -avz --human-readable \
+          rsync -avz --human-readable --itemize-changes \
+            --chown=www-data:www-data \
             --exclude='*.bak' --exclude='*.bak-*' --exclude='*.padfix-bak' --exclude='*.padfix2-bak' \
             --exclude='*.embed-bak' --exclude='*.landings-bak' --exclude='.DS_Store' \
             -e "ssh -i ~/.ssh/deploy_key -o UserKnownHostsFile=~/.ssh/known_hosts" \
             site/ \
             ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PATH }}
 
-      - name: Fix ownership (www-data) + reload PHP-FPM
+      - name: Reload PHP-FPM (clear opcache)
         run: |
           ssh -i ~/.ssh/deploy_key \
               -o UserKnownHostsFile=~/.ssh/known_hosts \
               ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
-              "chown -R www-data:www-data ${{ secrets.DEPLOY_PATH }}assets ${{ secrets.DEPLOY_PATH }}promo && systemctl reload php8.3-fpm && echo deployed: \$(date -u +%FT%TZ)"
+              "systemctl reload php8.3-fpm && echo deployed: \$(date -u +%FT%TZ)"
 
       - name: Smoke test
         run: |
