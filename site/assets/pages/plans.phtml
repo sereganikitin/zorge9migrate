@@ -1,0 +1,309 @@
+<?php
+    $plans_page = Page::findById(7);
+	$panoramaArea = Page::findById(420) -> content();
+?>
+
+<?php if (!empty($this->content('h1'))): ?>
+	<h1 class="g-meta-hidden"><?= $this->content('h1'); ?></h1>
+<?php endif; ?>
+<div class="textScroll__wrapper">
+    <div class="v-frame" :class="state+'_state b_'+b+' s_'+s+' f_'+f+' n_'+n">
+        <div class="bg_block ">
+            <div class="bg_size div_100">
+                <img class="div_100 wait-load" src="<?= getFileVersion($plans_page -> content('bg')); ?>">
+                <div class="div_100 plans_map_cont plans_map_cont--korpus" v-show="state === 'plans'">
+                    <map>
+						<?= $plans_page -> content('korpus_area'); ?>
+                    </map>
+                </div>
+				<div class="div_100 plans_map_cont plans_map_cont--floor" v-show="state === 'korpus'">
+					<map>
+						<?= $plans_page -> content(); ?>
+					</map>
+				</div>
+                <div class="floor_popup">
+                    <div class="left"></div>
+                    <div class="right">
+                        <div class="line n0 f"></div>
+                        <div class="line n1">ЭТАЖ</div>
+                        <div class="line n0 sq">20-205</div>
+                        <div class="line n1">Площадь, м<sup>2</sup></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div :class="['b_sel_block', 'b_sel_block--' + state]">
+            <div class="b_sel" :class="(_b==b?' active':'')" v-for="_b in ['1', '2', '3']" :data-targ="_b">
+                <div class="title" v-html="b_names[_b]"></div>
+                <div class="active">
+                    <div class="left">
+                        <div class="line n0">Корпус</div>
+                        <div class="line n1" v-html="b_names[_b]"></div>
+                    </div>
+                    <div class="right" v-html="get_av_text(_b)"></div>
+                </div>
+            </div>
+        </div>
+        <a class="open_search_btn pjax" href="/plans/search">Выбрать апартамент</a>
+        <div class="floor_frame at_floor at_flat">
+            <div class="plans_header">
+                <div class="item n0 at_korpus at_floor">
+                    <div class="line n0">Выберите <br>апартамент</div>
+                    <div class="line n1">из доступных</div>
+                </div>
+                <div class="item n1">
+                    <div class="korp_det n0">
+                        <div class="div_100">
+                            <div class="floor_up">
+                                <div class="val"></div>
+                            </div>
+                            <div class="floor_down">
+                                <div class="val"></div>
+                            </div>
+                        </div>
+                        <div class="line n0">{{ get_floor }}</div>
+                        <div class="line n1">этаж</div>
+                    </div>
+                    <div class="korp_det n1">
+                        <div class="div_100">
+                            <div class="sect_left"></div>
+                            <div class="sect_right">
+                                <div class="val"></div>
+                            </div>
+                        </div>
+                        <div class="line n0" v-html="b_names[b]"></div>
+                        <div class="line n1">корпус</div>
+                    </div>
+                </div>
+
+                <div class="minimap">
+                    <map>
+                        <area shape="poly" coords="13,112.5,0,100,32.8,66.7,45.6,79" title="3" alt="3" />
+                        <area shape="poly" coords="58.5,118.8,58.5,72.7,75,72.7,75.4,118.8" title="2" alt="2" />
+                        <area shape="poly" coords="100.4,119,100.4,72.9,117.8,72.9,118.2,119" title="1" alt="1" />
+                    </map>
+                </div>
+
+            </div>
+            <div class="ceiling_info_squares at_flat">
+                <template v-for="(square, sKey) in flat_squares" v-if="square.value">
+                    <div class="row" :class="{ indent: sKey === 'ch' }" :key="`sq-${sKey}`">
+                        <div class="title">
+                            {{ square.label }}
+                            <div class="ter_tooltip" v-if="sKey === 'ter'">
+                                <div class="ter_tooltip__content">При оценке стоимости квадратного метра террассы используется понижающий коэффициент</div>
+                            </div>
+                        </div>
+                        <div class="value" v-html="`${square.value} м${ sKey === 'ch' || sKey === 'cw' ? '' : '<sup>2</sup>'}`"></div><br>
+                    </div>
+                </template>
+            </div>
+            <div class="windrose_block">
+                <div class="windrose">
+                    <div class="windrose_letter north">С</div>
+                    <div class="windrose_letter east">В</div>
+                    <div class="windrose_letter south">Ю</div>
+                    <div class="windrose_letter west">З</div>
+                </div>
+            </div>
+            <div class="plan_frame at_flat n1">
+                <div class="plan_frame_size div_100">
+                    <div class="plan_frame_content div_100"></div>
+                    <div class="plan_frame_popup-btn"></div>
+                </div>
+            </div>
+            <div class="plan_frame at_floor n0">
+                <div class="plan_frame_size div_100">
+                    <div class="plan_frame_content div_100">
+                        <div class="plan_frame_content_centrer"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="apart_details_frame at_flat">
+                <div class="bg">
+                    <div class="item info-flat tr_n" data-targ="tr_n">
+                        <div class="value"></div>
+                        <div class="title">№ апартамента</div>
+                    </div>
+                    <div class="item info-flat rc" data-targ="rc">
+                        <div class="value"></div>
+                        <div class="title">комнат</div>
+                    </div>
+                    <div class="item info-flat sq" data-targ="sq">
+                        <div class="value"></div>
+                        <div class="title">площадь, м<sup>2</sup></div>
+                    </div>
+                    <?php if (!$hide_price) { ?>
+                    <div class="item item--cost">
+                        <div class="sc info-flat" data-targ="sc"><div class="value"></div></div>
+                        <div class="tc info-flat" data-targ="tc"><div class="value"></div></div>
+                        <div class="title" data-targ="price-label">цена без отделки, руб</div>
+                    </div>
+                    <div class="item item--cpm">
+                        <div class="cpm_sc info-flat" data-targ="cpm_sc"><div class="value"></div></div>
+                        <div class="cpm info-flat" data-targ="cpm"><div class="value"></div></div>
+                        <div class="title">цена м<sup>2</sup>, руб</div>
+                    </div>
+                    <? } ?>
+                </div>
+            </div>
+
+            <div class="apart_act_frame at_flat">
+                <div class="item icon-bron reserve_btn"><span>ЗАБРОНИРОВАТЬ</span></div>
+                <div class="item icon-pdf pdf_btn"><span>СКАЧАТЬ PDF</span></div>
+                <div class="h2em"></div>
+                <div class="item icon-3d pano_btn"
+                    data-targ="https://cloud2.vrnet.io/view5.16a/?model=ru/stmichael/zorge-9/b4k4"><span>3D ТУР</span>
+                </div>
+                <div class="item icon-pano pano_btn" data-targ="<?= $panoramaArea ?>"><span>ПАНОРАМА РАЙОНА</span></div>
+
+                <div class="h2em"></div>
+                <div class="item icon-eye window-view window-view-btn"><span>Виды из окон</span></div>
+
+                <div class="h1em"></div>
+                <div class="text-block window-view">
+                    <div class="section">
+                        <div class="b" data-targ="wv"></div>
+                    </div>
+                </div>
+
+                <div class="h2em"></div>
+                <div class="item icon-asterisk features"><span>Преимущества</span></div>
+
+                <div class="h1em"></div>
+                <div class="text-block features">
+                    <div class="section">
+                        <div class="b" data-targ="feat"></div>
+                    </div>
+					<div class="h1em"></div>
+					<div class="section">
+						<div class="b" data-targ="fin"></div>
+					</div>
+                </div>
+
+                <?php if ($hide_price) { ?>
+                    <div class="cta-button_price" data-targ="price-request">Узнать цену</div>
+                <? } else { ?>
+                <div class="cta-button_price" data-targ="flat-request">Оставить заявку</div>
+                <div class="cta-button_price" data-targ="flat-request-reserve">Запросить похожие</div>
+                <div class="flat-reserved hidden">
+                    <img src="/assets/i/lock.svg" />
+                    <span>Забронировано</span>
+                </div>
+                <? } ?>
+            </div>
+
+            <div class="plans_close">Назад</div>
+        </div>
+
+        <div :class="['plans_close plans_close--korpus', { 'plans_close--active': state === 'korpus' }]">Назад</div>
+
+        <div class="plan_frame_popup">
+            <div class="popup_overlay"></div>
+            <div class="popup_place"></div>
+            <div class="popup_close"></div>
+        </div>
+    </div>
+    <div class="floor_info" id="floorInfoPlate">
+        <div class="top"></div>
+        <div class="bottom"></div>
+    </div>
+    <div class="plans__scroll div_100">
+        <div class="plans__scroll-content">
+            <div class="plans-scheme">
+                <div class="scheme-select">
+                    <div data-open="1">на схеме этажа</div>
+                    <div class="active" data-open="2">на схеме застройки</div>
+                </div>
+                <div class="scheme-section scheme-1 hidden">
+                    <div class="flat_floor_resize div_100"></div>
+                </div>
+                <div class="scheme-section scheme-2">
+                    <div class="house-scheme">
+                        <div class="house house-1 active"></div>
+                        <div class="house house-2"></div>
+                        <div class="house house-3"></div>
+                        <div class="house-ico-1"></div>
+                        <div class="house-ico-2"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="h5em"></div>
+            <div class="plans-mortgage">
+                <h2>Ипотечные предложения</h2>
+
+                <div class="mortgage-calc">
+                    <?
+                    $banks_json = array();
+                    foreach (page::findById(81)->children(null, [], true) as $key => $value) {
+                        array_push($banks_json, array(
+                            'title' => $value -> title(),
+                            'logo' => $value->content('image'),
+                            'percent' => $value->content('percent'),
+                            'initial' => $value->content('initial'),
+                            'time' => $value->content('time')
+                        ));
+                    }
+                    ?>
+                    <script>var mortgage_json = <?= json_encode($banks_json); ?>;</script>
+
+                    <div class="buy__calculator">
+                        <div class="params_block">
+                            <div class="values">
+                                <div class="get-value initial_payment"></div>
+                                <div class="get-value time"></div>
+                                <div class="get-value percent"></div>
+                            </div>
+                            <div class="search_slider n1 active" data-targ="initial_payment"
+                                data-title="Первоначальный взнос, руб">
+                                <div class="value" v-html="addspace(initial_rub)+' р.'"></div>
+                            </div>
+                            <div class="search_slider n2 active" data-targ="time" data-title="Срок кредита, лет">
+                                <div class="value" v-html="time_current+' '+word_end"></div>
+                            </div>
+                            <div class="search_slider n3 active" data-targ="percent" data-title="Ставка от, %">
+                                <div class="value" v-html="time_current+' '+word_end"></div>
+                            </div>
+                        </div>
+                        <div class="h5em"></div>
+                        <div class="results_block">
+                            <div class="table_block">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <td>Банк</td>
+                                            <td>Ставка от</td>
+                                            <td>Срок</td>
+                                            <td>Ежемесячный платеж</td>
+                                            <td>Минимальный взнос</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                            <div class="buy__feedback-button js-callback" data-class="mortgageRequest">
+                                <span>Оформить заявку</span>
+                            </div>
+                        </div>
+                        <div class="h10em"></div>
+                        <div class="h5em"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="similar-aparts">
+                <h2>Похожие апартаменты</h2>
+                <div class="similar-list"></div>
+            </div>
+            <div class="h10em"></div>
+            <div class="podbor-form">
+                <?
+                    (new FeedbacksController())->getPopup('podbor');
+                ?>
+            </div>
+
+        </div>
+    </div>
+</div>
