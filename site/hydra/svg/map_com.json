@@ -1,0 +1,661 @@
+{
+ "flats": {
+  "1-1-0-80": {
+   "apartment": [
+    "/apartment_com/b1-s1-f0-p1.svg"
+   ],
+   "floor": [
+    "/floor_com/b1-s1-f0.svg"
+   ],
+   "p": 1
+  },
+  "1-1-0-90": {
+   "apartment": [
+    "/apartment_com/b1-s1-f0-p2.svg"
+   ],
+   "floor": [
+    "/floor_com/b1-s1-f0.svg"
+   ],
+   "p": 2
+  },
+  "1-1-0-100": {
+   "apartment": [
+    "/apartment_com/b1-s1-f0-p3.svg"
+   ],
+   "floor": [
+    "/floor_com/b1-s1-f0.svg"
+   ],
+   "p": 3
+  },
+  "1-1-0-620": {
+   "apartment": [
+    "/apartment_com/b1-s1-f0-p4.svg"
+   ],
+   "floor": [
+    "/floor_com/b1-s1-f0.svg"
+   ],
+   "p": 4
+  },
+  "1-1-1-10": {
+   "apartment": [
+    "/apartment_com/b1-s1-f1-p1.svg"
+   ],
+   "floor": [
+    "/floor_com/b1-s1-f1.svg"
+   ],
+   "p": 1
+  },
+  "1-1-1-20": {
+   "apartment": [
+    "/apartment_com/b1-s1-f1-p2.svg"
+   ],
+   "floor": [
+    "/floor_com/b1-s1-f1.svg"
+   ],
+   "p": 2
+  },
+  "1-1-1-30": {
+   "apartment": [
+    "/apartment_com/b1-s1-f1-p3.svg"
+   ],
+   "floor": [
+    "/floor_com/b1-s1-f1.svg"
+   ],
+   "p": 3
+  },
+  "1-1-1-40": {
+   "apartment": [
+    "/apartment_com/b1-s1-f1-p4.svg"
+   ],
+   "floor": [
+    "/floor_com/b1-s1-f1.svg"
+   ],
+   "p": 4
+  },
+  "1-1-1-50": {
+   "apartment": [
+    "/apartment_com/b1-s1-f1-p5.svg"
+   ],
+   "floor": [
+    "/floor_com/b1-s1-f1.svg"
+   ],
+   "p": 5
+  },
+  "1-1-1-60": {
+   "apartment": [
+    "/apartment_com/b1-s1-f1-p6.svg"
+   ],
+   "floor": [
+    "/floor_com/b1-s1-f1.svg"
+   ],
+   "p": 6
+  },
+  "1-1-1-70": {
+   "apartment": [
+    "/apartment_com/b1-s1-f1-p7.svg"
+   ],
+   "floor": [
+    "/floor_com/b1-s1-f1.svg"
+   ],
+   "p": 7
+  },
+  "1-1-1-220": {
+   "apartment": [
+    "/apartment_com/b1-s1-f1-p8.svg"
+   ],
+   "floor": [
+    "/floor_com/b1-s1-f1.svg"
+   ],
+   "p": 8
+  },
+  "1-1-2-0": {
+   "apartment": [
+    "/apartment_com/b1-s1-f2-p1.svg"
+   ],
+   "floor": [
+    "/floor_com/b1-s1-f2.svg"
+   ],
+   "p": 1
+  },
+  "2-1-0-1": {
+   "apartment": [
+    "/apartment_com/b2-s1-f0-p1.svg"
+   ],
+   "floor": [
+    "/floor_com/b2-s1-f0.svg"
+   ],
+   "p": 1
+  },
+  "2-1-1-10": {
+   "apartment": [
+    "/apartment_com/b2-s1-f1-p1.svg"
+   ],
+   "floor": [
+    "/floor_com/b2-s1-f1.svg"
+   ],
+   "p": 1
+  },
+  "2-1-1-20": {
+   "apartment": [
+    "/apartment_com/b2-s1-f1-p2.svg"
+   ],
+   "floor": [
+    "/floor_com/b2-s1-f1.svg"
+   ],
+   "p": 2
+  },
+  "2-1-1-30": {
+   "apartment": [
+    "/apartment_com/b2-s1-f1-p3.svg"
+   ],
+   "floor": [
+    "/floor_com/b2-s1-f1.svg"
+   ],
+   "p": 3
+  },
+  "2-1-1-40": {
+   "apartment": [
+    "/apartment_com/b2-s1-f1-p4.svg"
+   ],
+   "floor": [
+    "/floor_com/b2-s1-f1.svg"
+   ],
+   "p": 4
+  },
+  "2-1-1-50": {
+   "apartment": [
+    "/apartment_com/b2-s1-f1-p5.svg"
+   ],
+   "floor": [
+    "/floor_com/b2-s1-f1.svg"
+   ],
+   "p": 5
+  },
+  "2-1-1-60": {
+   "apartment": [
+    "/apartment_com/b2-s1-f1-p6.svg"
+   ],
+   "floor": [
+    "/floor_com/b2-s1-f1.svg"
+   ],
+   "p": 6
+  },
+  "2-1-1-70": {
+   "apartment": [
+    "/apartment_com/b2-s1-f1-p7.svg"
+   ],
+   "floor": [
+    "/floor_com/b2-s1-f1.svg"
+   ],
+   "p": 7
+  },
+  "2-1-1-80": {
+   "apartment": [
+    "/apartment_com/b2-s1-f1-p8.svg"
+   ],
+   "floor": [
+    "/floor_com/b2-s1-f1.svg"
+   ],
+   "p": 8
+  },
+  "2-1-1-90": {
+   "apartment": [
+    "/apartment_com/b2-s1-f1-p9.svg"
+   ],
+   "floor": [
+    "/floor_com/b2-s1-f1.svg"
+   ],
+   "p": 9
+  },
+  "2-1-1-100": {
+   "apartment": [
+    "/apartment_com/b2-s1-f1-p10.svg"
+   ],
+   "floor": [
+    "/floor_com/b2-s1-f1.svg"
+   ],
+   "p": 10
+  },
+  "2-1-1-110": {
+   "apartment": [
+    "/apartment_com/b2-s1-f1-p11.svg"
+   ],
+   "floor": [
+    "/floor_com/b2-s1-f1.svg"
+   ],
+   "p": 11
+  },
+  "2-1-1-120": {
+   "apartment": [
+    "/apartment_com/b2-s1-f1-p12.svg"
+   ],
+   "floor": [
+    "/floor_com/b2-s1-f1.svg"
+   ],
+   "p": 12
+  },
+  "2-1-2-1": {
+   "apartment": [
+    "/apartment_com/b2-s1-f2-p1.svg"
+   ],
+   "floor": [
+    "/floor_com/b2-s1-f2.svg"
+   ],
+   "p": 1
+  },
+  "2-1-2-2": {
+   "apartment": [
+    "/apartment_com/b2-s1-f2-p2.svg"
+   ],
+   "floor": [
+    "/floor_com/b2-s1-f2.svg"
+   ],
+   "p": 2
+  },
+  "2-1-2-3": {
+   "apartment": [
+    "/apartment_com/b2-s1-f2-p3.svg"
+   ],
+   "floor": [
+    "/floor_com/b2-s1-f2.svg"
+   ],
+   "p": 3
+  },
+  "2-1-2-8": {
+   "apartment": [
+    "/apartment_com/b2-s1-f2-p4.svg"
+   ],
+   "floor": [
+    "/floor_com/b2-s1-f2.svg"
+   ],
+   "p": 4
+  },
+  "2-1-2-11": {
+   "apartment": [
+    "/apartment_com/b2-s1-f2-p5.svg"
+   ],
+   "floor": [
+    "/floor_com/b2-s1-f2.svg"
+   ],
+   "p": 5
+  },
+  "2-1-2-12": {
+   "apartment": [
+    "/apartment_com/b2-s1-f2-p6.svg"
+   ],
+   "floor": [
+    "/floor_com/b2-s1-f2.svg"
+   ],
+   "p": 6
+  },
+  "2-1-2-13": {
+   "apartment": [
+    "/apartment_com/b2-s1-f2-p7.svg"
+   ],
+   "floor": [
+    "/floor_com/b2-s1-f2.svg"
+   ],
+   "p": 7
+  },
+  "2-1-2-14": {
+   "apartment": [
+    "/apartment_com/b2-s1-f2-p8.svg"
+   ],
+   "floor": [
+    "/floor_com/b2-s1-f2.svg"
+   ],
+   "p": 8
+  },
+  "2-1-2-15": {
+   "apartment": [
+    "/apartment_com/b2-s1-f2-p9.svg"
+   ],
+   "floor": [
+    "/floor_com/b2-s1-f2.svg"
+   ],
+   "p": 9
+  },
+  "3-1-1-10": {
+   "apartment": [
+    "/apartment_com/b3-s1-f1-p1.svg"
+   ],
+   "floor": [
+    "/floor_com/b3-s1-f1.svg"
+   ],
+   "p": 1
+  },
+  "3-1-1-20": {
+   "apartment": [
+    "/apartment_com/b3-s1-f1-p2.svg"
+   ],
+   "floor": [
+    "/floor_com/b3-s1-f1.svg"
+   ],
+   "p": 2
+  },
+  "3-1-1-30": {
+   "apartment": [
+    "/apartment_com/b3-s1-f1-p3.svg"
+   ],
+   "floor": [
+    "/floor_com/b3-s1-f1.svg"
+   ],
+   "p": 3
+  },
+  "3-1-1-40": {
+   "apartment": [
+    "/apartment_com/b3-s1-f1-p4.svg"
+   ],
+   "floor": [
+    "/floor_com/b3-s1-f1.svg"
+   ],
+   "p": 4
+  },
+  "3-1-1-50": {
+   "apartment": [
+    "/apartment_com/b3-s1-f1-p5.svg"
+   ],
+   "floor": [
+    "/floor_com/b3-s1-f1.svg"
+   ],
+   "p": 5
+  },
+  "3-1-1-60": {
+   "apartment": [
+    "/apartment_com/b3-s1-f1-p6.svg"
+   ],
+   "floor": [
+    "/floor_com/b3-s1-f1.svg"
+   ],
+   "p": 6
+  },
+  "3-1-1-70": {
+   "apartment": [
+    "/apartment_com/b3-s1-f1-p7.svg"
+   ],
+   "floor": [
+    "/floor_com/b3-s1-f1.svg"
+   ],
+   "p": 7
+  },
+  "3-1-1-80": {
+   "apartment": [
+    "/apartment_com/b3-s1-f1-p8.svg"
+   ],
+   "floor": [
+    "/floor_com/b3-s1-f1.svg"
+   ],
+   "p": 8
+  },
+  "3-1-1-90": {
+   "apartment": [
+    "/apartment_com/b3-s1-f1-p9.svg"
+   ],
+   "floor": [
+    "/floor_com/b3-s1-f1.svg"
+   ],
+   "p": 9
+  },
+  "3-1-1-100": {
+   "apartment": [
+    "/apartment_com/b3-s1-f1-p10.svg"
+   ],
+   "floor": [
+    "/floor_com/b3-s1-f1.svg"
+   ],
+   "p": 10
+  },
+  "3-1-1-110": {
+   "apartment": [
+    "/apartment_com/b3-s1-f1-p11.svg"
+   ],
+   "floor": [
+    "/floor_com/b3-s1-f1.svg"
+   ],
+   "p": 11
+  },
+  "3-1-1-120": {
+   "apartment": [
+    "/apartment_com/b3-s1-f1-p12.svg"
+   ],
+   "floor": [
+    "/floor_com/b3-s1-f1.svg"
+   ],
+   "p": 12
+  },
+  "3-1-2-12": {
+   "apartment": [
+    "/apartment_com/b3-s1-f2-p1.svg"
+   ],
+   "floor": [
+    "/floor_com/b3-s1-f2.svg"
+   ],
+   "p": 1
+  },
+  "3-1-2-13": {
+   "apartment": [
+    "/apartment_com/b3-s1-f2-p2.svg"
+   ],
+   "floor": [
+    "/floor_com/b3-s1-f2.svg"
+   ],
+   "p": 2
+  },
+  "3-1-2-14": {
+   "apartment": [
+    "/apartment_com/b3-s1-f2-p3.svg"
+   ],
+   "floor": [
+    "/floor_com/b3-s1-f2.svg"
+   ],
+   "p": 3
+  },
+  "3-1-2-15": {
+   "apartment": [
+    "/apartment_com/b3-s1-f2-p4.svg"
+   ],
+   "floor": [
+    "/floor_com/b3-s1-f2.svg"
+   ],
+   "p": 4
+  },
+  "3-1-2-16": {
+   "apartment": [
+    "/apartment_com/b3-s1-f2-p5.svg"
+   ],
+   "floor": [
+    "/floor_com/b3-s1-f2.svg"
+   ],
+   "p": 5
+  },
+  "3-1-2-31": {
+   "apartment": [
+    "/apartment_com/b3-s1-f2-p6.svg"
+   ],
+   "floor": [
+    "/floor_com/b3-s1-f2.svg"
+   ],
+   "p": 6
+  },
+  "3-1-2-32": {
+   "apartment": [
+    "/apartment_com/b3-s1-f2-p7.svg"
+   ],
+   "floor": [
+    "/floor_com/b3-s1-f2.svg"
+   ],
+   "p": 7
+  },
+  "3-1-2-33": {
+   "apartment": [
+    "/apartment_com/b3-s1-f2-p8.svg"
+   ],
+   "floor": [
+    "/floor_com/b3-s1-f2.svg"
+   ],
+   "p": 8
+  },
+  "3-1-2-34": {
+   "apartment": [
+    "/apartment_com/b3-s1-f2-p9.svg"
+   ],
+   "floor": [
+    "/floor_com/b3-s1-f2.svg"
+   ],
+   "p": 9
+  },
+  "3-1-2-35": {
+   "apartment": [
+    "/apartment_com/b3-s1-f2-p10.svg"
+   ],
+   "floor": [
+    "/floor_com/b3-s1-f2.svg"
+   ],
+   "p": 10
+  },
+  "3-1-2-36": {
+   "apartment": [
+    "/apartment_com/b3-s1-f2-p11.svg"
+   ],
+   "floor": [
+    "/floor_com/b3-s1-f2.svg"
+   ],
+   "p": 11
+  },
+  "3-1-2-37": {
+   "apartment": [
+    "/apartment_com/b3-s1-f2-p12.svg"
+   ],
+   "floor": [
+    "/floor_com/b3-s1-f2.svg"
+   ],
+   "p": 12
+  },
+  "3-1-2-38": {
+   "apartment": [
+    "/apartment_com/b3-s1-f2-p13.svg"
+   ],
+   "floor": [
+    "/floor_com/b3-s1-f2.svg"
+   ],
+   "p": 13
+  },
+  "5-1-1-1": {
+   "apartment": [
+    "/apartment_com/b5-s1-f1-p1.svg"
+   ],
+   "floor": [
+    "/floor_com/b5-s1-f1.svg"
+   ],
+   "p": 1
+  },
+  "5-1-1-2": {
+   "apartment": [
+    "/apartment_com/b5-s1-f1-p2.svg"
+   ],
+   "floor": [
+    "/floor_com/b5-s1-f1.svg"
+   ],
+   "p": 2
+  },
+  "5-1-1-3": {
+   "apartment": [
+    "/apartment_com/b5-s1-f1-p3.svg"
+   ],
+   "floor": [
+    "/floor_com/b5-s1-f1.svg"
+   ],
+   "p": 3
+  },
+  "6-1-1-10": {
+   "apartment": [
+    "/apartment_com/b6-s1-f1-p1.svg"
+   ],
+   "floor": [
+    "/floor_com/b6-s1-f1.svg"
+   ],
+   "p": 1
+  },
+  "6-1-2-20": {
+   "apartment": [
+    "/apartment_com/b6-s1-f2-p1.svg"
+   ],
+   "floor": [
+    "/floor_com/b6-s1-f2.svg"
+   ],
+   "p": 1
+  },
+  "6-1-3-30": {
+   "apartment": [
+    "/apartment_com/b6-s1-f3-p1.svg"
+   ],
+   "floor": [
+    "/floor_com/b6-s1-f3.svg"
+   ],
+   "p": 1
+  },
+  "7-1-0-40": {
+   "apartment": [
+    "/apartment_com/b7-s1-f0-p1.svg"
+   ],
+   "floor": [
+    "/floor_com/b7-s1-f0.svg"
+   ],
+   "p": 1
+  },
+  "7-1-1-10": {
+   "apartment": [
+    "/apartment_com/b7-s1-f1-p1.svg"
+   ],
+   "floor": [
+    "/floor_com/b7-s1-f1.svg"
+   ],
+   "p": 1
+  },
+  "7-1-2-20": {
+   "apartment": [
+    "/apartment_com/b7-s1-f2-p1.svg"
+   ],
+   "floor": [
+    "/floor_com/b7-s1-f2.svg"
+   ],
+   "p": 1
+  },
+  "7-1-3-30": {
+   "apartment": [
+    "/apartment_com/b7-s1-f3-p1.svg"
+   ],
+   "floor": [
+    "/floor_com/b7-s1-f3.svg"
+   ],
+   "p": 1
+  },
+  "13-1-2-4": {
+   "apartment": [
+    "/apartment_com/b13-s1-f2-p1.svg"
+   ],
+   "floor": [
+    "/floor_com/b13-s1-f2.svg"
+   ],
+   "p": 1
+  },
+  "13-1-3-5": {
+   "apartment": [
+    "/apartment_com/b13-s1-f3-p1.svg"
+   ],
+   "floor": [
+    "/floor_com/b13-s1-f3.svg"
+   ],
+   "p": 1
+  },
+  "13-1-4-6": {
+   "apartment": [
+    "/apartment_com/b13-s1-f4-p1.svg"
+   ],
+   "floor": [
+    "/floor_com/b13-s1-f4.svg"
+   ],
+   "p": 1
+  }
+ }
+}
