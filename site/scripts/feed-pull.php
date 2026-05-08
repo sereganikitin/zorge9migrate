@@ -35,13 +35,19 @@ const OUT_FILE       = '/var/www/old.zorge9.com/htdocs/hydra/json/data.json';
 const TMP_FILE       = OUT_FILE . '.tmp';
 const HTTP_TIMEOUT   = 60;
 
-// status в Profitbase → код в data.json (0=показывать как свободно,
-// 1=бронь, 2=недоступно). SOLD/EXECUTION просто отбрасываем.
+// status в Profitbase → код в data.json. Фронт интерпретирует st так:
+//   2 = свободна (без замка, кликабельно для покупки)
+//   1 = бронь (с замком и иконкой брони)
+//   0 = недоступна (с замком)
+// SOLD/EXECUTION просто отбрасываем (нет смысла показывать).
 const STATUS_MAP = [
-    'AVAILABLE'   => 0,
+    'AVAILABLE'   => 2,
     'BOOKED'      => 1,
-    'UNAVAILABLE' => 2,
+    'UNAVAILABLE' => 0,
 ];
+
+// Какой код st у "свободна" (для агрегаций at, arc и т.п.)
+const ST_AVAILABLE = 2;
 
 // корпус-номер по house-имени Profitbase
 const BUILDING_MAP = [
@@ -226,7 +232,7 @@ foreach ($apartments as $a) {
     }
     if ($f > $buildings[$b]['maxf']) $buildings[$b]['maxf'] = $f;
 
-    if ($st === 0) {
+    if ($st === ST_AVAILABLE) {
         $buildings[$b]['at']++;
         $rc_key = ($rc >= 1 && $rc <= 3) ? $rc : 1;
         $buildings[$b]['arc'][$rc_key]++;
@@ -248,7 +254,7 @@ foreach ($apartments as $a) {
             'maxf' => 1,
         ];
     }
-    if ($st === 0) {
+    if ($st === ST_AVAILABLE) {
         $floors[$fk]['at']++;
         $rc_key = ($rc >= 1 && $rc <= 3) ? $rc : 1;
         $floors[$fk]['arc'][$rc_key]++;
