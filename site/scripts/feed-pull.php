@@ -36,18 +36,18 @@ const TMP_FILE       = OUT_FILE . '.tmp';
 const HTTP_TIMEOUT   = 60;
 
 // status в Profitbase → код в data.json. Фронт интерпретирует st так:
-//   2 = свободна (без замка, кликабельно для покупки)
-//   1 = бронь (с замком и иконкой брони)
+//   1 = свободна (без замка, кликабельно для покупки)
+//   2 = бронь (с замком и иконкой брони)
 //   0 = недоступна (с замком)
 // SOLD/EXECUTION просто отбрасываем (нет смысла показывать).
 const STATUS_MAP = [
-    'AVAILABLE'   => 2,
-    'BOOKED'      => 1,
+    'AVAILABLE'   => 1,
+    'BOOKED'      => 2,
     'UNAVAILABLE' => 0,
 ];
 
 // Какой код st у "свободна" (для агрегаций at, arc и т.п.)
-const ST_AVAILABLE = 2;
+const ST_AVAILABLE = 1;
 
 // корпус-номер по house-имени Profitbase
 const BUILDING_MAP = [
