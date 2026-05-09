@@ -211,14 +211,20 @@ function load_outlines(): array {
     return $d['outlines'];
 }
 
-/** [[x,y],...] (% от растра) → SVG path d-атрибут. */
-function polygon_to_path(array $polygon): string {
+/**
+ * [[x,y],...] (% от растра) → SVG path d-атрибут.
+ * Координаты масштабируются в пиксели viewBox (W × H), чтобы area2svg
+ * корректно посчитал aspect для resize_blocks.floor.load(w/h).
+ */
+function polygon_to_path(array $polygon, float $w = 100.0, float $h = 100.0): string {
     if (count($polygon) < 3) return '';
     $d = '';
     foreach ($polygon as $i => $pt) {
         if (!is_array($pt) || count($pt) !== 2) return '';
         $cmd = $i === 0 ? 'M' : 'L';
-        $d .= $cmd . round((float)$pt[0], 3) . ' ' . round((float)$pt[1], 3) . ' ';
+        $x = round((float)$pt[0] / 100.0 * $w, 3);
+        $y = round((float)$pt[1] / 100.0 * $h, 3);
+        $d .= $cmd . $x . ' ' . $y . ' ';
     }
     return rtrim($d) . ' Z';
 }
@@ -239,7 +245,7 @@ function polygon_to_path(array $polygon): string {
  * номера эмитим один path: либо реальный полигон обводки, либо
  * невидимую заглушку, если ни для одного варианта не нарисована.
  */
-function generate_selection_svg(int $b, int $f, array $apartments, array $outlines, array $phys_seq): string {
+function generate_selection_svg(int $b, int $f, array $apartments, array $outlines, array $phys_seq, int $w, int $h): string {
     $fk = "$b-$f";
     $seq_to_polygon = [];   // seq => polygon (or null)
     $max_seq = 0;
@@ -260,12 +266,12 @@ function generate_selection_svg(int $b, int $f, array $apartments, array $outlin
     $paths_xml = '';
     for ($seq = $max_seq; $seq >= 1; $seq--) {  // descending
         $poly = $seq_to_polygon[$seq] ?? null;
-        $d = ($poly !== null) ? polygon_to_path($poly) : '';
+        $d = ($poly !== null) ? polygon_to_path($poly, (float)$w, (float)$h) : '';
         if ($d === '') $d = 'M-1 -1 L-1 -1 Z';
         $paths_xml .= '<path fill="none" d="' . htmlspecialchars($d, ENT_QUOTES) . '"/>';
     }
 
-    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none">'
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' . $w . ' ' . $h . '">'
          . '<g id="SELECTION">' . $paths_xml . '</g></svg>';
 }
 
@@ -595,15 +601,28 @@ if (!empty($dynamic_floors)) {
     }
     foreach ($dynamic_floors as $fk => $_) {
         [$b, $f] = array_map('intval', explode('-', $fk));
+        $raster_path = FLOOR_RASTER_DIR . "/{$fk}.png";
 
-        $sel = generate_selection_svg($b, $f, $apartments, $outlines, $phys_seq);
-        if ($sel !== '') {
-            if (write_atomic(FLOOR_RASTER_DIR . "/{$fk}_selection.svg", $sel)) $sel_written++;
+        // Растр должен быть на месте до генерации _selection.svg — нужно
+        // знать его width/height чтобы выставить корректный viewBox
+        // (area2svg делает resize_blocks.floor.load(w/h) и при квадратном
+        // viewBox контейнер сжимается до квадрата).
+        $raster_url = $floors[$fk]['floor_img'] ?? '';
+        if ($raster_url !== '' && mirror_raster($raster_url, $raster_path)) {
+            $mirrored++;
         }
 
-        $raster_url = $floors[$fk]['floor_img'] ?? '';
-        if ($raster_url !== '' && mirror_raster($raster_url, FLOOR_RASTER_DIR . "/{$fk}.png")) {
-            $mirrored++;
+        $w = 100; $h = 100;
+        if (is_file($raster_path)) {
+            $sz = @getimagesize($raster_path);
+            if ($sz && $sz[0] > 0 && $sz[1] > 0) {
+                $w = (int)$sz[0]; $h = (int)$sz[1];
+            }
+        }
+
+        $sel = generate_selection_svg($b, $f, $apartments, $outlines, $phys_seq, $w, $h);
+        if ($sel !== '') {
+            if (write_atomic(FLOOR_RASTER_DIR . "/{$fk}_selection.svg", $sel)) $sel_written++;
         }
     }
 }
