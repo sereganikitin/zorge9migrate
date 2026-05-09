@@ -4,52 +4,51 @@
  *
  * Запускается по cron (см. /etc/cron.d/zorge9-unloading). Читает Profitbase
  * XML-фид, парсит каждый <offer> и пишет JSON в формате, ожидаемом
- * фронтендом zorge9 (/plans, /flats, /plans/search и т.д.).
+ * фронтендом zorge9 (apartments, buildings, floors).
  *
- * Замена для:
- *   - старого unloading-плагина (sqlite-конфиг которого мерджил варианты /1/2/3
- *     в одну запись и не различал Profitbase-статусы)
- *   - mirror-cron'а с https://old.zorge9.com/hydra/json/data.json (зависимость
- *     от старого сервера)
+ * Использует "богатый" фид (token 2d1c9a6f...), в нём:
+ *   - <image type="plan floor"> — ссылки на растровый поэтажный план
+ *   - <image type="plan">       — план самой квартиры
+ *   - <image type="house|facade|building"> — фото объекта/фасада/здания
+ *   - <description>             — полное текстовое описание лота
+ *   - <custom-field>            — Очередь, Высота потолка, Особенности,
+ *                                 Фото из окон, 3D-планировка и т.п.
  *
  * Логика:
  *   - <offer> с property_type=Апартаменты пишутся как отдельные записи
- *     (никаких склеек /1, /2, /3)
- *   - SOLD/EXECUTION пропускаются (нет смысла показывать)
- *   - st: AVAILABLE→0, BOOKED→1, UNAVAILABLE→2 (как в OLD'овском поле)
- *   - n составляется как base×10 + вариант (256/1 → 2561), даёт уникальные
- *     ключи b-f-n даже для разных вариантов одной квартиры
+ *     (никаких склеек /1, /2, /3 вариантов; suffix-буквы "а", "с" и т.п.
+ *     теперь кодируются в `n` отдельной цифрой — больше нет коллизии
+ *     295/1 ↔ 295а/1)
+ *   - SOLD/EXECUTION просто отбрасываем (нет смысла показывать)
+ *   - Status → st: AVAILABLE→1 (без замка), BOOKED→2 (бронь), UNAVAILABLE→0
  *
- * Поля совпадающие с Profitbase: b, f, n, rc, sq, tc, cpm, sc, img, wv, id, st.
- * Augmentation-поля OLD'а (img_left/right, feat, td, wg) проставлены defaults —
- * фронт должен корректно обрабатывать их отсутствие. Если что-то отвалится
- * визуально — добавим точечно.
+ * Поля, которые мы НЕ можем достать из публичного фида и оставляем
+ * дефолтами (0/""): `kitchen, hallway, bedroom_1..4, wc_1, wc_2,
+ * living_kitchen, gost, dr_room, ant`. Это разбивка площадей по комнатам —
+ * у Profitbase это лежит в layout-database, недоступной через export.
+ * Заполняется отдельно если когда-нибудь дойдут руки.
  */
 
 declare(strict_types=1);
 
 if (PHP_SAPI !== 'cli') { http_response_code(403); exit('CLI only'); }
 
-const PROFITBASE_URL = 'https://pb7828.profitbase.ru/export/profitbase_xml/2b76e70bcddca7c519166c8a9993b20b';
+const PROFITBASE_URL = 'https://pb7828.profitbase.ru/export/profitbase_xml/2d1c9a6fdf95ba53617e48f4ceef5556?scheme=https';
 const OUT_FILE       = '/var/www/old.zorge9.com/htdocs/hydra/json/data.json';
 const TMP_FILE       = OUT_FILE . '.tmp';
-const HTTP_TIMEOUT   = 60;
+const HTTP_TIMEOUT   = 90;
 
-// status в Profitbase → код в data.json. Фронт интерпретирует st так:
-//   1 = свободна (без замка, кликабельно для покупки)
-//   2 = бронь (с замком и иконкой брони)
+// Profitbase status → код в data.json. Фронт интерпретирует:
+//   1 = свободна (без замка, кликабельно)
+//   2 = бронь (с замком + иконкой брони)
 //   0 = недоступна (с замком)
-// SOLD/EXECUTION просто отбрасываем (нет смысла показывать).
 const STATUS_MAP = [
     'AVAILABLE'   => 1,
     'BOOKED'      => 2,
     'UNAVAILABLE' => 0,
 ];
-
-// Какой код st у "свободна" (для агрегаций at, arc и т.п.)
 const ST_AVAILABLE = 1;
 
-// корпус-номер по house-имени Profitbase
 const BUILDING_MAP = [
     'Madison'   => 1,
     'Manhattan' => 2,
@@ -70,25 +69,57 @@ function fetch_xml(string $url): string {
         CURLOPT_FOLLOWLOCATION => true,
     ]);
     $body = curl_exec($ch);
-    if ($body === false) {
-        $err = curl_error($ch);
-        curl_close($ch);
-        fail("curl: $err");
-    }
+    if ($body === false) { $err = curl_error($ch); curl_close($ch); fail("curl: $err"); }
     curl_close($ch);
     return $body;
 }
 
-function parse_apt_number(string $number): array {
-    // ЗГ1-22-1-242/3 → tr_n="242/3", n=2423
-    // ЗГ1-3-3-016    → tr_n="016",   n=160 (×10 + 0 для "без варианта")
-    // ЗГ3-22-3-295а  → tr_n="295а",  n=2950 (буквенные суффиксы кодируем 0)
+/**
+ * Кодирует apartment-номер из Profitbase в уникальный целочисленный n.
+ *
+ * Profitbase формат: ЗГ{b}-{f}-{section}-{base}[/variant]
+ * где base может быть "256", "229" (только цифры) или "295а", "215с", "001c"
+ * (цифры + одна буква-суффикс). variant — цифра 1..N или отсутствует.
+ *
+ * Чтобы избежать коллизий (295 ↔ 295а), кодируем как:
+ *     n = base_int * 100 + suffix_code * 10 + variant
+ * suffix_code: 0 если нет буквы, иначе детерминированный 1..9 от crc32(буквы)
+ * variant: 0 если нет /N, иначе цифра.
+ *
+ * Примеры:
+ *   "256"     → 256 * 100 +  0 + 0 = 25600
+ *   "256/1"   → 25601
+ *   "295"     → 29500
+ *   "295а/1"  → 29500 + suffix(а)*10 + 1   (suffix(а) ≠ 0, уникально)
+ *   "295/1"   → 29501  (≠ 295а/1)
+ */
+function parse_apt_number(string $number): ?array {
     $parts = explode('-', $number);
     $tr_n  = end($parts);
     [$base, $variant] = array_pad(explode('/', $tr_n, 2), 2, '0');
-    $n_base = (int) preg_replace('/\D/', '', $base);
-    $variant_int = (int) preg_replace('/\D/', '', $variant);
-    return [$tr_n, $n_base * 10 + $variant_int];
+
+    $n_base = 0; $suffix = '';
+    if (preg_match('/^(\d+)([^\d\/]*)$/u', $base, $m)) {
+        $n_base = (int) $m[1];
+        $suffix = $m[2];
+    } else {
+        $n_base = (int) preg_replace('/\D/', '', $base);
+    }
+    $suffix_code = $suffix === '' ? 0 : (abs(crc32($suffix)) % 9 + 1);
+
+    // variant: только цифровые. Кривые ("???", "abc" и т.п.) — null,
+    // вызывающий пропустит offer (это всегда битые UNAVAILABLE-записи в
+    // Profitbase, на витрину не идут).
+    if ($variant === '' || $variant === '0') {
+        $variant_int = 0;
+    } elseif (ctype_digit($variant)) {
+        $variant_int = (int) $variant;
+    } else {
+        return null;
+    }
+
+    $n = $n_base * 100 + $suffix_code * 10 + $variant_int;
+    return [$tr_n, $n];
 }
 
 function building_id(string $house_name): ?int {
@@ -96,6 +127,22 @@ function building_id(string $house_name): ?int {
         if (stripos($house_name, $needle) !== false) return $id;
     }
     return null;
+}
+
+/** Извлекает custom-field по name. Возвращает '' если нет/пусто. */
+function cf(SimpleXMLElement $offer, string $name): string {
+    foreach ($offer->{'custom-field'} as $cf) {
+        if ((string) $cf->name === $name) {
+            return trim((string) $cf->value);
+        }
+    }
+    return '';
+}
+
+/** Тоже что cf(), но возвращает float (или 0 если пусто/не число). */
+function cf_float(SimpleXMLElement $offer, string $name): float {
+    $v = cf($offer, $name);
+    return ($v === '' || !is_numeric($v)) ? 0.0 : (float) $v;
 }
 
 // --- main -----------------------------------------------------------
@@ -109,7 +156,7 @@ $xml = @simplexml_load_string($xml_str);
 if ($xml === false) fail('xml parse failed');
 
 $apartments = [];
-$counts = ['skipped' => 0, 'wrong_type' => 0, 'no_building' => 0, 'no_status' => 0, 'sold' => 0];
+$counts = ['wrong_type' => 0, 'no_building' => 0, 'no_status' => 0, 'sold' => 0, 'collision' => 0, 'malformed' => 0];
 
 foreach ($xml->offer as $o) {
     if ((string) $o->property_type !== 'Апартаменты') {
@@ -120,18 +167,20 @@ foreach ($xml->offer as $o) {
 
     $status = (string) $o->status;
     if (!isset(STATUS_MAP[$status])) {
-        // SOLD, EXECUTION etc. — пропускаем
-        $counts['sold']++;
-        continue;
+        $counts['sold']++; continue;
     }
     $st = STATUS_MAP[$status];
 
-    [$tr_n, $n] = parse_apt_number((string) $o->number);
+    $parsed = parse_apt_number((string) $o->number);
+    if ($parsed === null) {
+        $counts['malformed']++;
+        continue;
+    }
+    [$tr_n, $n] = $parsed;
     $f  = (int) $o->floor;
     $rc = (int) $o->rooms;
     $sq = (float) $o->area->value;
     $tc = (int) $o->price->value;
-
     $cpm = isset($o->{'price-meter'}->value) ? (int) $o->{'price-meter'}->value : 0;
 
     $sc = 0; $cpm_sc = 0;
@@ -140,21 +189,58 @@ foreach ($xml->offer as $o) {
         $cpm_sc = $sq > 0 ? (int) round($sc / $sq) : 0;
     }
 
-    $img = [];
+    // <image> — разбираем по типам
+    $img = []; $floor_img = ''; $house_img = ''; $facade_img = ''; $building_imgs = [];
     foreach ($o->image as $im) {
-        $u = trim((string) $im);
-        if ($u !== '') $img[] = $u;
+        $type = (string) $im['type'];
+        $url = trim((string) $im);
+        if ($url === '') continue;
+        switch ($type) {
+            case 'plan':       $img[] = $url; break;
+            case 'plan floor': $floor_img = $url; break;
+            case 'house':      $house_img = $url; break;
+            case 'facade':     $facade_img = $url; break;
+            case 'building':   $building_imgs[] = $url; break;
+        }
     }
 
-    // built-year + ready-quarter — общие на корпус, забираем из первого попавшегося offer'а
+    // custom-field → наши поля
+    $offer_queue   = cf($o, 'Очередь');                // "I очередь" / "II очередь"
+    $td            = cf($o, '3D планировка');           // ссылка на 3D-тур
+    $ch            = cf_float($o, 'Высота потолка');   // 3.25
+    $cw            = cf_float($o, 'Высота окна');      // 2.75
+    $feat          = cf($o, 'Особенности');            // "Высокие потолки, Кухня-гостиная"
+    $old_tc_raw    = cf($o, 'Старая цена');
+    $old_tc        = is_numeric($old_tc_raw) ? (int) $old_tc_raw : 0;
+    $profit        = cf($o, 'Выгода');                 // % выгоды или сумма
+    $promo         = cf($o, 'Акция');                  // тоже акция
+    $ter_raw       = cf($o, 'Терраса');
+    $ter           = is_numeric($ter_raw) ? (float) $ter_raw : ($ter_raw !== '' && $ter_raw !== 'Нет' ? 1 : 0);
+
+    // window photos: "url1; url2; url3" → ["url1", "url2", "url3"]
+    $wg_raw = cf($o, 'Фото из окон');
+    $wg = [];
+    if ($wg_raw !== '') {
+        foreach (preg_split('/[;\s]+/', $wg_raw) as $u) {
+            $u = trim($u);
+            if ($u !== '' && filter_var($u, FILTER_VALIDATE_URL)) $wg[] = $u;
+        }
+    }
+
+    // built-year + ready-quarter — общие на корпус (используем для агрегата)
     $built_year     = (string) ($o->house->{'built-year'}     ?? '');
     $ready_quarter  = (string) ($o->house->{'ready-quarter'}  ?? '');
 
+    // window-view (отдельный тег, не custom-field)
+    $wv = (string) ($o->{'window-view'} ?? '');
+
+    // полное описание
+    $desc = (string) ($o->description ?? '');
+
     $key = "$b-$f-$n";
     if (isset($apartments[$key])) {
-        // защита от коллизии (теоретически не должно быть, но логирнём)
+        $counts['collision']++;
         fwrite(STDERR, "[feed-pull] WARN: key collision $key (tr_n={$apartments[$key]['tr_n']} vs $tr_n)\n");
-        $counts['collision'] = ($counts['collision'] ?? 0) + 1;
     }
 
     $apartments[$key] = [
@@ -170,104 +256,108 @@ foreach ($xml->offer as $o) {
         'tc'             => $tc,
         'sc'             => $sc,
         'tr_n'           => $tr_n,
-        'wv'             => (string) ($o->{'window-view'} ?? ''),
+        'wv'             => $wv,
         'img'            => $img,
+        'floor_img'      => $floor_img,
+        'house_img'      => $house_img,
+        'facade_img'     => $facade_img,
+        'building_imgs'  => $building_imgs,
         'id'             => (string) $o['internal-id'],
         'fin'            => (string) ($o->facing ?? ''),
+        'desc'           => $desc,
+        'offer'          => $offer_queue,
+        'td'             => $td,
+        'ch'             => $ch,
+        'cw'             => $cw,
+        'feat'           => $feat,
+        'old_tc'         => $old_tc,
+        'profit'         => $profit !== '' ? $profit : $promo,
+        'ter'            => $ter,
+        'wg'             => $wg,
 
-        // legacy/augmentation поля OLD'а — defaults; добавляем для совместимости
-        // фронта (он лезет за этими ключами). Если фронт что-то требует визуально —
-        // дополнить отдельно.
+        // разбивка площадей по комнатам — оставляем дефолтами (см. doc-комментарий
+        // в шапке файла). Если когда-нибудь появится layout-DB или они придут
+        // через "Сайт.*" custom-fields — заполним точечно.
         'lv'             => 1,
         'kitchen'        => 0,
         'hallway'        => 0,
         'wc_1'           => 0,
         'wc_2'           => 0,
         'ant'            => 0,
-        'offer'          => 0,
-        'profit'         => 0,
-        'old_tc'         => 0,
         'living_kitchen' => 0,
         'gost'           => 0,
         'bedroom_1'      => 0,
         'bedroom_2'      => 0,
         'dr_room'        => 0,
-        'ch'             => 0,
-        'cw'             => 0,
-        'ter'            => 0,
-        'feat'           => '',
-        'td'             => '',
-        'wg'             => [],
         'img_left'       => '',
         'img_right'      => '',
-        '_built_year'    => $built_year,    // временные поля (стираются перед output)
+
+        '_built_year'    => $built_year,
         '_ready_quarter' => $ready_quarter,
     ];
 }
 
-// агрегаты buildings и floors:
-//   buildings[b] = { arc, at, tc:{min,max}, sq:{min,max}, maxf, by, rq }
-//   floors[b-f]  = { arc, at, tc:{min,max}, sq:{min,max}, maxf:1 }
-// at  — count свободных (st=0)
-// arc — по комнатам (только st=0)
-// tc/sq — мин/макс по свободным (для слайдеров на frontend)
-// by  — год сдачи корпуса
-// rq  — квартал сдачи
-$buildings = [];
-$floors    = [];
+// --- агрегаты buildings и floors ----------------------------------
+// buildings[b] = { arc, at, tc:{min,max}, sq:{min,max}, maxf, by, rq, floor_imgs }
+// floors[b-f]  = { arc, at, tc:{min,max}, sq:{min,max}, maxf:1, floor_img }
+//   floor_img — берётся из первого попавшегося apartment на этом этаже, у всех квартир
+//               одного этажа Profitbase возвращает один и тот же plan-floor URL
+//
+$buildings = []; $floors = [];
 
 foreach ($apartments as $a) {
     $b = $a['b']; $f = $a['f']; $rc = $a['rc']; $st = $a['st'];
 
     if (!isset($buildings[$b])) {
         $buildings[$b] = [
-            'arc'  => [1 => 0, 2 => 0, 3 => 0],
-            'at'   => 0,
-            'tc'   => ['min' => null, 'max' => null],
-            'sq'   => ['min' => null, 'max' => null],
-            'maxf' => 0,
-            'by'   => $a['_built_year']    ?: '',
-            'rq'   => $a['_ready_quarter'] ?: '',
+            'arc' => [1=>0, 2=>0, 3=>0],
+            'at'  => 0,
+            'tc'  => ['min' => null, 'max' => null],
+            'sq'  => ['min' => null, 'max' => null],
+            'maxf'=> 0,
+            'by'  => $a['_built_year']    ?: '',
+            'rq'  => $a['_ready_quarter'] ?: '',
         ];
     }
     if ($f > $buildings[$b]['maxf']) $buildings[$b]['maxf'] = $f;
 
-    if ($st === ST_AVAILABLE) {
-        $buildings[$b]['at']++;
-        $rc_key = ($rc >= 1 && $rc <= 3) ? $rc : 1;
-        $buildings[$b]['arc'][$rc_key]++;
-
-        $tc = $a['tc']; $sq = $a['sq'];
-        if ($buildings[$b]['tc']['min'] === null || $tc < $buildings[$b]['tc']['min']) $buildings[$b]['tc']['min'] = $tc;
-        if ($buildings[$b]['tc']['max'] === null || $tc > $buildings[$b]['tc']['max']) $buildings[$b]['tc']['max'] = $tc;
-        if ($buildings[$b]['sq']['min'] === null || $sq < $buildings[$b]['sq']['min']) $buildings[$b]['sq']['min'] = $sq;
-        if ($buildings[$b]['sq']['max'] === null || $sq > $buildings[$b]['sq']['max']) $buildings[$b]['sq']['max'] = $sq;
-    }
-
     $fk = "$b-$f";
     if (!isset($floors[$fk])) {
         $floors[$fk] = [
-            'arc'  => [1 => 0, 2 => 0, 3 => 0],
-            'at'   => 0,
-            'tc'   => ['min' => null, 'max' => null],
-            'sq'   => ['min' => null, 'max' => null],
-            'maxf' => 1,
+            'arc'       => [1=>0, 2=>0, 3=>0],
+            'at'        => 0,
+            'tc'        => ['min' => null, 'max' => null],
+            'sq'        => ['min' => null, 'max' => null],
+            'maxf'      => 1,
+            'floor_img' => $a['floor_img'] ?: '',
         ];
+    } elseif ($floors[$fk]['floor_img'] === '' && $a['floor_img'] !== '') {
+        $floors[$fk]['floor_img'] = $a['floor_img'];
     }
+
     if ($st === ST_AVAILABLE) {
-        $floors[$fk]['at']++;
         $rc_key = ($rc >= 1 && $rc <= 3) ? $rc : 1;
+
+        $buildings[$b]['at']++;
+        $buildings[$b]['arc'][$rc_key]++;
+
+        $floors[$fk]['at']++;
         $floors[$fk]['arc'][$rc_key]++;
 
         $tc = $a['tc']; $sq = $a['sq'];
-        if ($floors[$fk]['tc']['min'] === null || $tc < $floors[$fk]['tc']['min']) $floors[$fk]['tc']['min'] = $tc;
-        if ($floors[$fk]['tc']['max'] === null || $tc > $floors[$fk]['tc']['max']) $floors[$fk]['tc']['max'] = $tc;
-        if ($floors[$fk]['sq']['min'] === null || $sq < $floors[$fk]['sq']['min']) $floors[$fk]['sq']['min'] = $sq;
-        if ($floors[$fk]['sq']['max'] === null || $sq > $floors[$fk]['sq']['max']) $floors[$fk]['sq']['max'] = $sq;
+        foreach (['tc' => $tc, 'sq' => $sq] as $k => $v) {
+            foreach (['buildings' => $b, 'floors' => $fk] as $bag => $idx) {
+                $box = $bag === 'buildings' ? $buildings[$idx] : $floors[$idx];
+                if ($box[$k]['min'] === null || $v < $box[$k]['min']) $box[$k]['min'] = $v;
+                if ($box[$k]['max'] === null || $v > $box[$k]['max']) $box[$k]['max'] = $v;
+                if ($bag === 'buildings') $buildings[$idx] = $box;
+                else $floors[$idx] = $box;
+            }
+        }
     }
 }
 
-// убираем временные поля _built_year/_ready_quarter из выходных apartments
+// убираем временные поля _built_year/_ready_quarter
 foreach ($apartments as $k => &$a) {
     unset($a['_built_year'], $a['_ready_quarter']);
 }
@@ -288,8 +378,8 @@ if (!rename(TMP_FILE, OUT_FILE)) fail('atomic rename failed');
 $elapsed = round(microtime(true) - $started, 2);
 $total = count($apartments);
 fwrite(STDOUT, "[feed-pull] " . date('c') . " ok: $total apartments, "
-    . "skipped=" . ($counts['wrong_type'] + $counts['no_building'] + $counts['sold'])
-    . " (sold/exec=" . $counts['sold']
+    . "skipped: sold/exec=" . $counts['sold']
     . " not-apt=" . $counts['wrong_type']
     . " no-bldg=" . $counts['no_building']
-    . "), {$elapsed}s\n");
+    . " collisions=" . $counts['collision']
+    . ", {$elapsed}s\n");
