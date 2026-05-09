@@ -1,6 +1,8 @@
 (function () {
     'use strict';
 
+    if (!document.getElementById('oe-app')) return;
+
     var SVG_NS = 'http://www.w3.org/2000/svg';
 
     var state = {

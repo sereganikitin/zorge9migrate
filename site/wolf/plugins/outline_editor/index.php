@@ -23,7 +23,7 @@ Plugin::setInfos([
     'type'                 => 'both',
 ]);
 
-Plugin::addController('outline_editor', 'Обводки', 'outline_editor_view', false);
+Plugin::addController('outline_editor', 'Обводки', false, true);
 
 Dispatcher::addRoute([
     '/outline_editor/api' => 'plugin/outline_editor/api',
