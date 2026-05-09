@@ -1,0 +1,35 @@
+/*
+ * floor_raster.css — стили для динамического рендера поэтажки на растре
+ * (см. feed-pull.php → /hydra/svg/floor_raster/<b>-<f>_selection.svg).
+ *
+ * Полигоны .oe-active ставит feed-pull на path-ы для активных квартир
+ * (AVAILABLE/BOOKED) с нарисованной обводкой. Для не-активных и
+ * не-нарисованных идут dummy за экраном без класса.
+ *
+ * Дефолт: белая заливка 50%, белый контур.
+ * Hover:  золотая заливка, золотой контур.
+ */
+
+.plan_frame_content_centrer path.oe-active {
+    fill: rgba(255, 255, 255, 0.5) !important;
+    stroke: rgb(255, 255, 255) !important;
+    stroke-width: 2 !important;
+    stroke-linejoin: round !important;
+    opacity: 1 !important;
+    cursor: pointer;
+    transition: fill 150ms ease, stroke 150ms ease;
+}
+
+.plan_frame_content_centrer path.oe-active:hover {
+    fill: rgba(172, 150, 109, 0.45) !important;
+    stroke: rgb(172, 150, 109) !important;
+}
+
+/* Размер площади на полигоне — поменьше дефолтного calc(var(--ind) * 2.7) */
+.plan_frame_content_centrer .apart_popup .value {
+    font-size: calc(var(--ind) * 1.8) !important;
+    font-weight: 600 !important;
+}
+.plan_frame_content_centrer .apart_popup .value span {
+    font-size: 1.1rem !important;
+}

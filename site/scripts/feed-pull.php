@@ -246,13 +246,16 @@ function polygon_to_path(array $polygon, float $w = 100.0, float $h = 100.0): st
  * невидимую заглушку, если ни для одного варианта не нарисована.
  */
 function generate_selection_svg(int $b, int $f, array $apartments, array $outlines, array $apt_seq, int $w, int $h): string {
-    $seq_to_polygon = [];   // seq => polygon (or null)
+    $seq_to_polygon = [];   // seq => polygon (only for active+drawn)
     $max_seq = 0;
     foreach ($apartments as $key => $a) {
         if ((int)$a['b'] !== $b || (int)$a['f'] !== $f) continue;
         $seq = $apt_seq[$key] ?? 0;
         if ($seq <= 0) continue;
         $max_seq = max($max_seq, $seq);
+        // Не-активные квартиры (st=0, UNAVAILABLE) — обводку не рисуем
+        // даже если админ её нарисовал. dummy за экраном.
+        if ((int)$a['st'] === 0) continue;
         if (isset($outlines[$key]['polygon'])
             && is_array($outlines[$key]['polygon'])
             && count($outlines[$key]['polygon']) >= 3) {
@@ -261,27 +264,20 @@ function generate_selection_svg(int $b, int $f, array $apartments, array $outlin
     }
     if ($max_seq === 0) return '';
 
-    // Реальные полигоны делаем золотыми через inline style с !important.
-    // Особенность area2svg-структуры:
-    //   DOM: [bottom-svg, raster-div, top-svg] (по z-order: bottom < raster < top)
-    // Bottom-svg рисует ПОД растром — его на цветном растре не видно. На статичных
-    // SVG-этажах фон line-art полупрозрачный, и bottom видно сквозь него — там
-    // эта схема работает. У нас под растром глухо, поэтому красим ОБА слоя
-    // (top тоже получит этот style через item.svg() → group_top.svg()):
-    //   - opacity: 1 !important — переопределяет area2svg's .attr({opacity: 0})
-    //     для top, делая полигон видимым ПОВЕРХ растра.
-    //   - fill rgba c alpha 0.3 — полупрозрачно, чтобы видеть растр под обводкой.
-    //   - stroke #ac966d — фирменный золотой контур.
-    // Dummy paths остаются с fill="none" — невидимые.
-    $real_style = 'fill: rgba(172,150,109,0.30) !important; stroke: rgb(172,150,109) !important; '
-                . 'stroke-width: 3 !important; stroke-linejoin: round !important; opacity: 1 !important;';
+    // Реальные полигоны помечаем class="oe-active". Стили висят в
+    // /assets/css/floor_raster.css (подключается в plans.phtml):
+    //   - дефолт: белая заливка 50% + белый контур
+    //   - :hover: золотая заливка + золотой контур
+    // CSS использовать обязательно вместо inline style — :hover нельзя
+    // прописать в inline. Класс попадает в обе area2svg path-копии (top
+    // и bottom), но виден только top — он рисуется ПОВЕРХ растра.
     $paths_xml = '';
     for ($seq = $max_seq; $seq >= 1; $seq--) {  // descending
         $poly = $seq_to_polygon[$seq] ?? null;
         if ($poly !== null) {
             $d = polygon_to_path($poly, (float)$w, (float)$h);
             if ($d !== '') {
-                $paths_xml .= '<path style="' . $real_style . '" d="' . htmlspecialchars($d, ENT_QUOTES) . '"/>';
+                $paths_xml .= '<path class="oe-active" d="' . htmlspecialchars($d, ENT_QUOTES) . '"/>';
                 continue;
             }
         }
