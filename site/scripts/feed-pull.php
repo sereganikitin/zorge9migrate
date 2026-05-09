@@ -36,7 +36,62 @@ if (PHP_SAPI !== 'cli') { http_response_code(403); exit('CLI only'); }
 const PROFITBASE_URL = 'https://pb7828.profitbase.ru/export/profitbase_xml/2d1c9a6fdf95ba53617e48f4ceef5556?scheme=https';
 const OUT_FILE       = '/var/www/old.zorge9.com/htdocs/hydra/json/data.json';
 const TMP_FILE       = OUT_FILE . '.tmp';
+const MAP_FILE       = '/var/www/old.zorge9.com/htdocs/hydra/svg/map.json';
+const MAP_TMP_FILE   = MAP_FILE . '.tmp';
 const HTTP_TIMEOUT   = 90;
+
+// Имя floor-SVG-файла (без префикса `/floor/` и без `.svg`).
+// Часть этажей в проекте типовые и шарят один SVG (например все этажи 10-18
+// Madison'а используют b1-f10_18). Это базовое имя используется и для
+// floor-SVG (`/floor/<name>.svg`) и для apartment-SVG-обводок
+// (`/apartment/<name>-p{p}.svg`), они всегда лежат вместе.
+function floor_svg_name(int $b, int $f): string {
+    static $map = [
+        1 => [
+            1  => 'b1-f1',
+            2  => 'b1-f2',
+            3  => 'b1-f3_5', 4 => 'b1-f3_5', 5 => 'b1-f3_5',
+            6  => 'b1-f6_7', 7 => 'b1-f6_7',
+            8  => 'b1-f8_9', 9 => 'b1-f8_9',
+            10 => 'b1-f10_18', 11 => 'b1-f10_18', 12 => 'b1-f10_18',
+            13 => 'b1-f10_18', 14 => 'b1-f10_18', 15 => 'b1-f10_18',
+            16 => 'b1-f10_18', 17 => 'b1-f10_18', 18 => 'b1-f10_18',
+            19 => 'b1-f19_20', 20 => 'b1-f19_20',
+            21 => 'b1-f21_22', 22 => 'b1-f21_22',
+            23 => 'b1-f23',
+        ],
+        2 => [
+            1  => 'b2-f1',
+            2  => 'b2-f2',
+            3  => 'b2-f3_5', 4 => 'b2-f3_5', 5 => 'b2-f3_5',
+            6  => 'b2-f6_20', 7 => 'b2-f6_20', 8 => 'b2-f6_20',
+            9  => 'b2-f6_20', 10 => 'b2-f6_20', 11 => 'b2-f6_20',
+            12 => 'b2-f6_20', 13 => 'b2-f6_20', 14 => 'b2-f6_20',
+            15 => 'b2-f6_20', 16 => 'b2-f6_20', 17 => 'b2-f6_20',
+            18 => 'b2-f6_20', 19 => 'b2-f6_20', 20 => 'b2-f6_20',
+            21 => 'b2-f21_22', 22 => 'b2-f21_22',
+            23 => 'b2-f23',
+        ],
+        3 => [
+            1  => 'b3-f1',
+            2  => 'b3-f2',
+            3  => 'b3-f3_20', 4 => 'b3-f3_20', 5 => 'b3-f3_20',
+            6  => 'b3-f3_20', 7 => 'b3-f3_20', 8 => 'b3-f3_20',
+            9  => 'b3-f3_20', 10 => 'b3-f3_20', 11 => 'b3-f3_20',
+            12 => 'b3-f3_20', 13 => 'b3-f3_20', 14 => 'b3-f3_20',
+            15 => 'b3-f3_20', 16 => 'b3-f3_20', 17 => 'b3-f3_20',
+            18 => 'b3-f3_20', 19 => 'b3-f3_20', 20 => 'b3-f3_20',
+            21 => 'b3-f21_22', 22 => 'b3-f21_22',
+            23 => 'b3-f23',
+        ],
+    ];
+    return $map[$b][$f] ?? "b{$b}-f{$f}";
+}
+
+// Для каждого здания свой генплан-SVG.
+function building_svg_path(int $b): string {
+    return '/building/b1_3.svg';  // у нас один общий генплан на все 3 корпуса
+}
 
 // Profitbase status → код в data.json. Фронт интерпретирует:
 //   1 = свободна (без замка, кликабельно)
@@ -178,6 +233,7 @@ foreach ($xml->offer as $o) {
     }
     [$tr_n, $n] = $parsed;
     $f  = (int) $o->floor;
+    $pos_on_floor = (int) ($o->{'position-on-floor'} ?? 0);
     $rc = (int) $o->rooms;
     $sq = (float) $o->area->value;
     $tc = (int) $o->price->value;
@@ -294,6 +350,7 @@ foreach ($xml->offer as $o) {
 
         '_built_year'    => $built_year,
         '_ready_quarter' => $ready_quarter,
+        '_pos_on_floor'  => $pos_on_floor,  // нужно для генерации map.json (см. ниже), потом стираем
     ];
 }
 
@@ -357,9 +414,48 @@ foreach ($apartments as $a) {
     }
 }
 
-// убираем временные поля _built_year/_ready_quarter
+// --- генерим map.json для ApiJsonController + plans.js ---------
+// Структура: { flats: { "<key>": { apartment: [<paths>], floor: [path], building: [path], p: <pos> } } }
+// p — это position-on-floor из Profitbase. Используется JS для связи "клик по
+// path в _selection.svg" → "какая квартира". Варианты одной квартиры (016/1,
+// 016/2, 016/3) имеют ОДИНАКОВЫЙ p (это одна и та же физическая ячейка на
+// этаже с разной комплектацией).
+//
+// Profitbase кладёт <position-on-floor> только в offer базового варианта
+// (016/1), варианты /2 /3 идут с пустым полем. Поэтому собираем lookup по
+// "физическому" ключу (b, f, n_base*100 + suffix_code*10) — он стабилен для
+// всех вариантов одной и той же ячейки — и подставляем p, если в offer пусто.
+$pos_lookup = [];
+foreach ($apartments as $a) {
+    if ($a['_pos_on_floor'] > 0) {
+        $phys = "{$a['b']}-{$a['f']}-" . (intdiv($a['n'], 10) * 10);
+        $pos_lookup[$phys] = $a['_pos_on_floor'];
+    }
+}
+$map_flats = [];
+foreach ($apartments as $key => $a) {
+    $b = $a['b']; $f = $a['f'];
+    $p = $a['_pos_on_floor'];
+    if ($p === 0) {
+        $phys = "{$b}-{$f}-" . (intdiv($a['n'], 10) * 10);
+        $p = $pos_lookup[$phys] ?? 0;
+    }
+    $fn = floor_svg_name($b, $f);
+    $map_flats[$key] = [
+        'apartment' => $p > 0 ? ["/apartment/{$fn}-p{$p}.svg"] : [],
+        'floor'     => ["/floor/{$fn}.svg"],
+        'building'  => [building_svg_path($b)],
+        'p'         => $p,
+    ];
+}
+$map_out = ['flats' => (object) $map_flats];
+$map_json = json_encode($map_out, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+if (file_put_contents(MAP_TMP_FILE, $map_json) === false) fail('write map tmp failed');
+if (!rename(MAP_TMP_FILE, MAP_FILE)) fail('rename map failed');
+
+// убираем временные поля
 foreach ($apartments as $k => &$a) {
-    unset($a['_built_year'], $a['_ready_quarter']);
+    unset($a['_built_year'], $a['_ready_quarter'], $a['_pos_on_floor']);
 }
 unset($a);
 
