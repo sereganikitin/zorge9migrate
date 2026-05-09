@@ -25,14 +25,17 @@
     stroke: rgb(172, 150, 109) !important;
 }
 
-/* Подпись площади: дефолт золотая, при hover — чёрная.
- * .apart_popup.hover класс ставит сам plans.js на mouseover.
- * Размер мельче дефолтного (calc(var(--ind) * 2.7)). */
+/* Подпись площади: всегда чёрная, мельче дефолтной (calc(var(--ind) * 2.7)),
+ * z-index выше чтобы не пряталась под top-svg-обводкой. По DOM-структуре
+ * area2svg popups сидят между raster-div и top-svg — без z-index их
+ * перекрывает полигон сверху. */
+.plan_frame_content_centrer .apart_popup {
+    z-index: 10;
+}
 .plan_frame_content_centrer .apart_popup .value {
     font-size: calc(var(--ind) * 1.8) !important;
     font-weight: 600 !important;
-    color: #ac966d !important;
-    transition: color 150ms ease;
+    color: #000 !important;
 }
 .plan_frame_content_centrer .apart_popup.hover .value {
     color: #000 !important;
