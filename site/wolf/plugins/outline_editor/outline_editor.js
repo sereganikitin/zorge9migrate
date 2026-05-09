@@ -13,9 +13,12 @@
         mode: 'pan',            // 'pan' | 'draw'
         draftPoints: [],        // current polygon being drawn, [[x,y]] in 0..100
         dirty: false,           // unsaved changes
+        zoom: 1,                // 1..6
+        fullwidth: false,
     };
 
     var els = {
+        app:          document.getElementById('oe-app'),
         floorSelect:  document.getElementById('oe-floor-select'),
         modePanBtn:   document.getElementById('oe-mode-pan'),
         modeDrawBtn:  document.getElementById('oe-mode-draw'),
@@ -25,9 +28,15 @@
         saveBtn:      document.getElementById('oe-save'),
         statusEl:     document.getElementById('oe-status'),
         stage:        document.getElementById('oe-stage'),
+        stageContent: document.getElementById('oe-stage-content'),
         raster:       document.getElementById('oe-raster'),
         svg:          document.getElementById('oe-svg'),
         apartList:    document.getElementById('oe-apart-list'),
+        zoomIn:       document.getElementById('oe-zoom-in'),
+        zoomOut:      document.getElementById('oe-zoom-out'),
+        zoomReset:    document.getElementById('oe-zoom-reset'),
+        zoomLabel:    document.getElementById('oe-zoom-label'),
+        fullwidthBtn: document.getElementById('oe-fullwidth'),
     };
 
     // -- bootstrap ------------------------------------------------------------
@@ -306,6 +315,53 @@
     });
     els.deleteBtn.addEventListener('click',   deleteSelected);
     els.saveBtn.addEventListener('click',     save);
+
+    // -- zoom + fullwidth -----------------------------------------------------
+
+    var ZOOM_MIN = 1, ZOOM_MAX = 6;
+
+    function applyZoom(focalX, focalY) {
+        var oldZ = state.lastZoom || 1;
+        var newZ = state.zoom;
+        els.stageContent.style.transform = 'scale(' + newZ + ')';
+        els.zoomLabel.textContent = Math.round(newZ * 100) + '%';
+        if (focalX != null && focalY != null && oldZ !== newZ) {
+            var f = newZ / oldZ;
+            els.stage.scrollLeft = f * (els.stage.scrollLeft + focalX) - focalX;
+            els.stage.scrollTop  = f * (els.stage.scrollTop  + focalY) - focalY;
+        }
+        state.lastZoom = newZ;
+    }
+
+    function setZoom(newZ, focalX, focalY) {
+        newZ = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, newZ));
+        if (newZ === state.zoom) return;
+        state.zoom = newZ;
+        applyZoom(focalX, focalY);
+    }
+
+    els.zoomIn.addEventListener('click',  function () { setZoom(state.zoom * 1.25); });
+    els.zoomOut.addEventListener('click', function () { setZoom(state.zoom / 1.25); });
+    els.zoomReset.addEventListener('click', function () {
+        els.stage.scrollLeft = 0; els.stage.scrollTop = 0;
+        setZoom(1);
+    });
+
+    els.stage.addEventListener('wheel', function (e) {
+        if (!e.ctrlKey) return;        // require Ctrl to avoid hijacking scroll
+        e.preventDefault();
+        var rect = els.stage.getBoundingClientRect();
+        var fx = e.clientX - rect.left;
+        var fy = e.clientY - rect.top;
+        setZoom(state.zoom * (e.deltaY > 0 ? (1/1.15) : 1.15), fx, fy);
+    }, { passive: false });
+
+    els.fullwidthBtn.addEventListener('click', function () {
+        state.fullwidth = !state.fullwidth;
+        els.app.classList.toggle('oe-app--fullwidth', state.fullwidth);
+        els.fullwidthBtn.classList.toggle('oe-btn--active', state.fullwidth);
+        els.fullwidthBtn.textContent = state.fullwidth ? '⇔ Уже' : '⇔ Шире';
+    });
 
     window.addEventListener('beforeunload', function (e) {
         if (state.dirty) { e.preventDefault(); e.returnValue = ''; }

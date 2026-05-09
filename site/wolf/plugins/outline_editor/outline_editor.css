@@ -15,7 +15,19 @@
 }
 .oe-toolbar label { display: flex; gap: 6px; align-items: center; }
 .oe-toolbar select { padding: 4px 8px; min-width: 160px; }
+.oe-toolbar__sep {
+    width: 1px;
+    height: 22px;
+    background: #ddd;
+    margin: 0 4px;
+}
 .oe-spacer { flex: 1; }
+.oe-zoom-label {
+    font-size: 12px;
+    min-width: 44px;
+    text-align: center;
+    color: #555;
+}
 
 .oe-btn {
     padding: 6px 12px;
@@ -43,20 +55,27 @@
     gap: 12px;
     align-items: stretch;
 }
+.oe-app--fullwidth .oe-workspace { grid-template-columns: 1fr; }
+.oe-app--fullwidth .oe-sidebar { display: none; }
 
 .oe-stage {
     position: relative;
     background: #f7f7f7 repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(0,0,0,0.03) 8px, rgba(0,0,0,0.03) 16px);
     border: 1px solid #ccc;
-    overflow: hidden;
+    overflow: auto;
     min-height: 500px;
-    display: block;
+    height: calc(100vh - 240px);
+}
+.oe-stage-content {
+    position: relative;
+    transform-origin: 0 0;
+    width: 100%;
+    user-select: none;
 }
 #oe-raster {
     display: block;
     width: 100%;
     height: auto;
-    user-select: none;
     pointer-events: none;
 }
 #oe-svg {
@@ -75,13 +94,16 @@
     justify-content: center;
     color: #888;
     font-size: 14px;
+    pointer-events: none;
 }
 .oe-stage.oe-has-img .oe-empty { display: none; }
 
 .oe-poly {
     fill: rgba(76, 175, 80, 0.18);
     stroke: rgba(76, 175, 80, 0.85);
-    stroke-width: 1.5;
+    stroke-width: 1.4;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
     cursor: pointer;
     transition: fill 80ms;
 }
@@ -94,7 +116,7 @@
 .oe-poly--draft {
     fill: rgba(33, 150, 243, 0.20);
     stroke: rgba(33, 150, 243, 0.95);
-    stroke-width: 2;
+    stroke-width: 1.6;
     stroke-dasharray: 4 3;
     pointer-events: none;
 }
@@ -102,6 +124,7 @@
     fill: #fff;
     stroke: #2196f3;
     stroke-width: 1.5;
+    vector-effect: non-scaling-stroke;
 }
 .oe-poly-label {
     fill: #222;
@@ -119,7 +142,7 @@
     border: 1px solid #ddd;
     background: #fff;
     padding: 10px;
-    max-height: 70vh;
+    max-height: calc(100vh - 240px);
     overflow: auto;
     display: flex;
     flex-direction: column;
