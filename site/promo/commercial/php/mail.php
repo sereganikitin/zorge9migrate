@@ -1,21 +1,24 @@
 <?php
 
+// Домен берём из заголовка запроса, чтобы работало на любом домене без правок.
+// Sanitize: HTTP_HOST контролируется клиентом, оставляем только безопасные символы.
+$host = preg_replace('/[^a-zA-Z0-9.\-]/', '', $_SERVER['HTTP_HOST'] ?? 'localhost');
 
 $sendto   = "moreshkina@stmichael.ru"; // почта, на которую будет приходить письмо
 $username = $_POST['name'];   // сохраняем в переменную данные полученные из поля c именем
 $usertel = $_POST['phone']; // сохраняем в переменную данные полученные из поля c телефонным номером
 
 // Формирование заголовка письма
-$subject  = "Сообщение с сайта zorge9.com/promo";
+$subject  = "Сообщение с сайта " . $host . "/promo";
 //$headers  = "From: " . strip_tags($username) . "\r\n";
-$headers .= "From: Promo <info@zorge9.com>\r\n"; // от кого письмо
+$headers .= "From: Promo <info@" . $host . ">\r\n"; // от кого письмо
 $headers .= "Reply-To: ". strip_tags($username) . "\r\n";
 $headers .= "MIME-Version: 1.0\r\n";
 $headers .= "Content-Type: text/html;charset=utf-8 \r\n";
 
 // Формирование тела письма
 $msg  = "<html><body style='font-family:Arial,sans-serif;'>";
-$msg .= "<h2 style='font-weight:bold;border-bottom:1px dotted #ccc;'>Cообщение с сайта zorge9.com/promo</h2>\r\n";
+$msg .= "<h2 style='font-weight:bold;border-bottom:1px dotted #ccc;'>Cообщение с сайта " . $host . "/promo</h2>\r\n";
 $msg .= "<p><strong>От кого:</strong> ".$username."</p>\r\n";
 $msg .= "<p><strong>Телефон:</strong> ".$usertel."</p>\r\n";
 $msg .= "</body></html>";

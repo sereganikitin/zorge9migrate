@@ -263,12 +263,26 @@ function generate_selection_svg(int $b, int $f, array $apartments, array $outlin
     }
     if ($max_seq === 0) return '';
 
+    // Реальные полигоны делаем цветными через inline style (с !important).
+    // Inline style имеет приоритет над presentation attribute, поэтому area2svg's
+    // .attr({fill:'#fff', opacity: 0/0.34}) не сможет его перезаписать. fill в
+    // RGB (без alpha), opacity управляется attr-ом — даёт нормальный hover-эффект:
+    // дефолт 0.34 → green 34%, hover 0.6 → green 60%.
+    // Dummy paths остаются с fill="none" — невидимые.
+    $real_style = 'fill: rgb(76,175,80) !important; stroke: rgb(46,125,50) !important; '
+                . 'stroke-width: 2 !important; stroke-linejoin: round !important;';
     $paths_xml = '';
     for ($seq = $max_seq; $seq >= 1; $seq--) {  // descending
         $poly = $seq_to_polygon[$seq] ?? null;
-        $d = ($poly !== null) ? polygon_to_path($poly, (float)$w, (float)$h) : '';
-        if ($d === '') $d = 'M-100000 -100000 L-100000 -99999 L-99999 -100000 Z';
-        $paths_xml .= '<path fill="none" d="' . htmlspecialchars($d, ENT_QUOTES) . '"/>';
+        if ($poly !== null) {
+            $d = polygon_to_path($poly, (float)$w, (float)$h);
+            if ($d !== '') {
+                $paths_xml .= '<path style="' . $real_style . '" d="' . htmlspecialchars($d, ENT_QUOTES) . '"/>';
+                continue;
+            }
+        }
+        $dummy = 'M-100000 -100000 L-100000 -99999 L-99999 -100000 Z';
+        $paths_xml .= '<path fill="none" d="' . htmlspecialchars($dummy, ENT_QUOTES) . '"/>';
     }
 
     return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' . $w . ' ' . $h . '">'
@@ -416,7 +430,7 @@ foreach ($xml->offer as $o) {
         'n'              => $n,
         'rc'             => $rc,
         'sq'             => $sq,
-        'sqo'            => floor($sq),
+        'sqo'            => round($sq, 1),
         'st'             => $st,
         'cpm'            => $cpm,
         'cpm_sc'         => $cpm_sc,
@@ -567,7 +581,14 @@ uasort($apartments, function ($a, $b) use ($status_priority) {
     $pa = intdiv($a['n'], 10) * 10;
     $pb = intdiv($b['n'], 10) * 10;
     $cmp = $pa <=> $pb; if ($cmp !== 0) return $cmp;
-    return $status_priority($a['st']) <=> $status_priority($b['st']);
+    $cmp = $status_priority($a['st']) <=> $status_priority($b['st']);
+    if ($cmp !== 0) return $cmp;
+    // В пределах одной физической ячейки + статуса — variant DESC: /3 первым,
+    // /1 последним. Это нужно area2svg: target_flats[N-key] = последний
+    // записанный вариант. Хочется чтобы клик попадал на /1 а не на /3.
+    $va = $a['n'] % 10;
+    $vb = $b['n'] % 10;
+    return $vb <=> $va;
 });
 
 // p_seq: плотный 1..N в каждом этаже, варианты одной ячейки делят номер.
@@ -586,11 +607,15 @@ foreach ($apartments as $a) {
 }
 
 // --- bridge: outlines.json → per-floor _selection.svg + mirrored raster ---
+// На динамику переходят ВСЕ этажи у которых есть floor_img в фиде (а не
+// только этажи с нарисованными обводками). Полигоны для квартир без
+// обводки — невидимые dummy за экраном; квартиры всё равно отображаются
+// в боковой панели с площадью, просто не кликабельны на схеме.
 $outlines = load_outlines();
 $dynamic_floors = [];  // "b-f" => true
-foreach ($apartments as $key => $a) {
-    if (isset($outlines[$key]) && !empty($outlines[$key]['polygon'])) {
-        $dynamic_floors[$a['b'] . '-' . $a['f']] = true;
+foreach ($floors as $fk => $fl) {
+    if (!empty($fl['floor_img'])) {
+        $dynamic_floors[$fk] = true;
     }
 }
 
