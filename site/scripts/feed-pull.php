@@ -267,7 +267,7 @@ function generate_selection_svg(int $b, int $f, array $apartments, array $outlin
     for ($seq = $max_seq; $seq >= 1; $seq--) {  // descending
         $poly = $seq_to_polygon[$seq] ?? null;
         $d = ($poly !== null) ? polygon_to_path($poly, (float)$w, (float)$h) : '';
-        if ($d === '') $d = 'M-1 -1 L-1 -1 Z';
+        if ($d === '') $d = 'M-100000 -100000 L-100000 -99999 L-99999 -100000 Z';
         $paths_xml .= '<path fill="none" d="' . htmlspecialchars($d, ENT_QUOTES) . '"/>';
     }
 
