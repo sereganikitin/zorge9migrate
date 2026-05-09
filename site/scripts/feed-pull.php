@@ -245,17 +245,15 @@ function polygon_to_path(array $polygon, float $w = 100.0, float $h = 100.0): st
  * номера эмитим один path: либо реальный полигон обводки, либо
  * невидимую заглушку, если ни для одного варианта не нарисована.
  */
-function generate_selection_svg(int $b, int $f, array $apartments, array $outlines, array $phys_seq, int $w, int $h): string {
-    $fk = "$b-$f";
+function generate_selection_svg(int $b, int $f, array $apartments, array $outlines, array $apt_seq, int $w, int $h): string {
     $seq_to_polygon = [];   // seq => polygon (or null)
     $max_seq = 0;
     foreach ($apartments as $key => $a) {
         if ((int)$a['b'] !== $b || (int)$a['f'] !== $f) continue;
-        $phys_key = $fk . '-' . (intdiv((int)$a['n'], 10) * 10);
-        $seq = $phys_seq[$phys_key] ?? 0;
+        $seq = $apt_seq[$key] ?? 0;
         if ($seq <= 0) continue;
         $max_seq = max($max_seq, $seq);
-        if (!isset($seq_to_polygon[$seq]) && isset($outlines[$key]['polygon'])
+        if (isset($outlines[$key]['polygon'])
             && is_array($outlines[$key]['polygon'])
             && count($outlines[$key]['polygon']) >= 3) {
             $seq_to_polygon[$seq] = $outlines[$key]['polygon'];
@@ -263,14 +261,20 @@ function generate_selection_svg(int $b, int $f, array $apartments, array $outlin
     }
     if ($max_seq === 0) return '';
 
-    // Реальные полигоны делаем цветными через inline style (с !important).
-    // Inline style имеет приоритет над presentation attribute, поэтому area2svg's
-    // .attr({fill:'#fff', opacity: 0/0.34}) не сможет его перезаписать. fill в
-    // RGB (без alpha), opacity управляется attr-ом — даёт нормальный hover-эффект:
-    // дефолт 0.34 → green 34%, hover 0.6 → green 60%.
+    // Реальные полигоны делаем золотыми через inline style с !important.
+    // Особенность area2svg-структуры:
+    //   DOM: [bottom-svg, raster-div, top-svg] (по z-order: bottom < raster < top)
+    // Bottom-svg рисует ПОД растром — его на цветном растре не видно. На статичных
+    // SVG-этажах фон line-art полупрозрачный, и bottom видно сквозь него — там
+    // эта схема работает. У нас под растром глухо, поэтому красим ОБА слоя
+    // (top тоже получит этот style через item.svg() → group_top.svg()):
+    //   - opacity: 1 !important — переопределяет area2svg's .attr({opacity: 0})
+    //     для top, делая полигон видимым ПОВЕРХ растра.
+    //   - fill rgba c alpha 0.3 — полупрозрачно, чтобы видеть растр под обводкой.
+    //   - stroke #ac966d — фирменный золотой контур.
     // Dummy paths остаются с fill="none" — невидимые.
-    $real_style = 'fill: rgb(76,175,80) !important; stroke: rgb(46,125,50) !important; '
-                . 'stroke-width: 2 !important; stroke-linejoin: round !important;';
+    $real_style = 'fill: rgba(172,150,109,0.30) !important; stroke: rgb(172,150,109) !important; '
+                . 'stroke-width: 3 !important; stroke-linejoin: round !important; opacity: 1 !important;';
     $paths_xml = '';
     for ($seq = $max_seq; $seq >= 1; $seq--) {  // descending
         $poly = $seq_to_polygon[$seq] ?? null;
@@ -591,19 +595,20 @@ uasort($apartments, function ($a, $b) use ($status_priority) {
     return $vb <=> $va;
 });
 
-// p_seq: плотный 1..N в каждом этаже, варианты одной ячейки делят номер.
-// Используется как floor_num на динамических этажах (где area2svg требует
-// плотного набора ключей в target_flats).
-$phys_seq = [];           // "b-f-phys_n" => seq
+// apt_seq: уникальный 1..N для каждой apt-ключа в каждом этаже. Раньше я
+// объединял варианты одной "физической ячейки" в один seq, потому что
+// думал что /1, /2, /3 — это разные комплектации одной квартиры. Но
+// данные в Profitbase у этого проекта другие: /1, /2, /3 — РАЗНЫЕ
+// квартиры с разной площадью (004/1=44.8, 004/2=18.05, 004/3=18.5).
+// Поэтому каждая записывается отдельным path-ом в _selection.svg
+// со своей собственной обводкой из outlines.json.
+$apt_seq = [];            // apt_key => seq
 $next_seq_per_floor = []; // "b-f" => next int
-foreach ($apartments as $a) {
+foreach ($apartments as $key => $a) {
     $fk = $a['b'] . '-' . $a['f'];
-    $phys_key = $fk . '-' . (intdiv($a['n'], 10) * 10);
-    if (!isset($phys_seq[$phys_key])) {
-        $next = ($next_seq_per_floor[$fk] ?? 0) + 1;
-        $next_seq_per_floor[$fk] = $next;
-        $phys_seq[$phys_key] = $next;
-    }
+    $next = ($next_seq_per_floor[$fk] ?? 0) + 1;
+    $next_seq_per_floor[$fk] = $next;
+    $apt_seq[$key] = $next;
 }
 
 // --- bridge: outlines.json → per-floor _selection.svg + mirrored raster ---
@@ -645,7 +650,7 @@ if (!empty($dynamic_floors)) {
             }
         }
 
-        $sel = generate_selection_svg($b, $f, $apartments, $outlines, $phys_seq, $w, $h);
+        $sel = generate_selection_svg($b, $f, $apartments, $outlines, $apt_seq, $w, $h);
         if ($sel !== '') {
             if (write_atomic(FLOOR_RASTER_DIR . "/{$fk}_selection.svg", $sel)) $sel_written++;
         }
@@ -660,10 +665,10 @@ foreach ($apartments as $key => $a) {
     $is_dynamic = isset($dynamic_floors[$fk]);
 
     if ($is_dynamic) {
-        // Динамический этаж: plотный p_seq (для area2svg), без статичной
-        // SVG-обводки квартиры (её рисует админ; индивидуального плана нет).
-        $phys_key = $fk . '-' . (intdiv($a['n'], 10) * 10);
-        $p = $phys_seq[$phys_key] ?? 0;
+        // Динамический этаж: уникальный apt_seq для каждой квартиры
+        // (для area2svg target_flats), без статичной SVG-обводки квартиры
+        // (её рисует админ; индивидуального плана нет).
+        $p = $apt_seq[$key] ?? 0;
         $apartment_paths = [];
         $floor_path = "/floor_raster/{$fk}.png";
     } else {
