@@ -1,0 +1,162 @@
+.oe-app {
+    font-family: 'PT Sans', Arial, sans-serif;
+    color: #222;
+}
+.oe-app h1 { margin: 0 0 10px; }
+
+.oe-toolbar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 0;
+    flex-wrap: wrap;
+    border-bottom: 1px solid #ddd;
+    margin-bottom: 10px;
+}
+.oe-toolbar label { display: flex; gap: 6px; align-items: center; }
+.oe-toolbar select { padding: 4px 8px; min-width: 160px; }
+.oe-spacer { flex: 1; }
+
+.oe-btn {
+    padding: 6px 12px;
+    border: 1px solid #bbb;
+    background: #fafafa;
+    cursor: pointer;
+    border-radius: 3px;
+    font-size: 13px;
+}
+.oe-btn:hover:not(:disabled) { background: #eee; }
+.oe-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.oe-btn--active { background: #d6e8ff; border-color: #6aa6e8; }
+.oe-btn--primary { background: #2b8a3e; color: #fff; border-color: #237030; }
+.oe-btn--primary:hover:not(:disabled) { background: #237030; }
+.oe-btn--danger { background: #fff; color: #c92a2a; border-color: #f0a0a0; }
+.oe-btn--danger:hover:not(:disabled) { background: #ffe5e5; }
+
+.oe-status { font-size: 12px; color: #555; }
+.oe-status.oe-ok    { color: #2b8a3e; }
+.oe-status.oe-err   { color: #c92a2a; }
+
+.oe-workspace {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 12px;
+    align-items: stretch;
+}
+
+.oe-stage {
+    position: relative;
+    background: #f7f7f7 repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(0,0,0,0.03) 8px, rgba(0,0,0,0.03) 16px);
+    border: 1px solid #ccc;
+    overflow: hidden;
+    min-height: 500px;
+    display: block;
+}
+#oe-raster {
+    display: block;
+    width: 100%;
+    height: auto;
+    user-select: none;
+    pointer-events: none;
+}
+#oe-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    cursor: crosshair;
+}
+#oe-svg.oe-mode-pan { cursor: default; }
+.oe-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #888;
+    font-size: 14px;
+}
+.oe-stage.oe-has-img .oe-empty { display: none; }
+
+.oe-poly {
+    fill: rgba(76, 175, 80, 0.18);
+    stroke: rgba(76, 175, 80, 0.85);
+    stroke-width: 1.5;
+    cursor: pointer;
+    transition: fill 80ms;
+}
+.oe-poly:hover { fill: rgba(76, 175, 80, 0.32); }
+.oe-poly--selected {
+    fill: rgba(255, 152, 0, 0.30);
+    stroke: rgba(255, 152, 0, 0.95);
+    stroke-width: 2;
+}
+.oe-poly--draft {
+    fill: rgba(33, 150, 243, 0.20);
+    stroke: rgba(33, 150, 243, 0.95);
+    stroke-width: 2;
+    stroke-dasharray: 4 3;
+    pointer-events: none;
+}
+.oe-vertex {
+    fill: #fff;
+    stroke: #2196f3;
+    stroke-width: 1.5;
+}
+.oe-poly-label {
+    fill: #222;
+    font: 11px/1.2 'PT Sans', Arial, sans-serif;
+    text-anchor: middle;
+    paint-order: stroke;
+    stroke: #fff;
+    stroke-width: 3;
+    stroke-linejoin: round;
+    pointer-events: none;
+    user-select: none;
+}
+
+.oe-sidebar {
+    border: 1px solid #ddd;
+    background: #fff;
+    padding: 10px;
+    max-height: 70vh;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.oe-help {
+    font-size: 12px;
+    color: #555;
+    background: #f3f5f7;
+    padding: 8px 10px;
+    border-radius: 3px;
+}
+.oe-help ol { padding-left: 18px; margin: 4px 0 0; }
+
+.oe-apart-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.oe-apart-item {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 6px;
+    align-items: baseline;
+    padding: 5px 8px;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 13px;
+}
+.oe-apart-item:hover { background: #f3f5f7; }
+.oe-apart-item--selected { background: #fff3e0; border-color: #ffb74d; }
+.oe-apart-item--has-outline { background: #e8f5e9; }
+.oe-apart-item--has-outline.oe-apart-item--selected { background: #fff3e0; }
+.oe-apart-item__name { font-weight: bold; }
+.oe-apart-item__sq    { color: #666; font-size: 11px; }
+.oe-apart-item__mark  { color: #2b8a3e; font-size: 11px; }

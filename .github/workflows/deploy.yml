@@ -44,7 +44,7 @@ jobs:
             --chown=www-data:www-data \
             --exclude='*.bak' --exclude='*.bak-*' --exclude='*.padfix-bak' --exclude='*.padfix2-bak' \
             --exclude='*.embed-bak' --exclude='*.landings-bak' --exclude='.DS_Store' \
-            --exclude='hydra/svg/map.json' \
+            --exclude='hydra/svg/map.json' --exclude='hydra/svg/outlines.json' \
             -e "ssh -i ~/.ssh/deploy_key -o UserKnownHostsFile=~/.ssh/known_hosts" \
             site/ \
             ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PATH }}
