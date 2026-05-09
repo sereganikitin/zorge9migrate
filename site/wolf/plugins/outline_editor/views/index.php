@@ -31,6 +31,7 @@
             <div class="oe-stage-content" id="oe-stage-content">
                 <img id="oe-raster" alt="" />
                 <svg id="oe-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+                <div id="oe-overlay" class="oe-overlay"></div>
             </div>
             <div id="oe-empty" class="oe-empty">Выбери этаж — растровый план появится здесь.</div>
         </div>

@@ -31,6 +31,7 @@
         stageContent: document.getElementById('oe-stage-content'),
         raster:       document.getElementById('oe-raster'),
         svg:          document.getElementById('oe-svg'),
+        overlay:      document.getElementById('oe-overlay'),
         apartList:    document.getElementById('oe-apart-list'),
         zoomIn:       document.getElementById('oe-zoom-in'),
         zoomOut:      document.getElementById('oe-zoom-out'),
@@ -162,8 +163,8 @@
         els.svg.setAttribute('viewBox', '0 0 100 100');
         els.svg.setAttribute('preserveAspectRatio', 'none');
         els.svg.classList.toggle('oe-mode-pan', state.mode !== 'draw');
+        els.overlay.innerHTML = '';
 
-        // saved polygons for current floor
         var fl = findFloor(state.currentFloorKey);
         if (fl) {
             var keys = new Set(fl.aparts.map(function (a) { return a.key; }));
@@ -181,34 +182,31 @@
                 });
                 els.svg.appendChild(poly);
 
-                // label
                 var c = centroid(o.polygon);
-                var label = document.createElementNS(SVG_NS, 'text');
-                label.setAttribute('x', c[0]); label.setAttribute('y', c[1]);
-                label.setAttribute('class', 'oe-poly-label');
+                var label = document.createElement('div');
+                label.className = 'oe-label' + (k === state.selectedAptKey ? ' oe-label--selected' : '');
+                label.style.left = c[0] + '%';
+                label.style.top  = c[1] + '%';
                 var tr_n = (fl.aparts.find(function (a) { return a.key === k; }) || {}).tr_n || k;
                 label.textContent = tr_n;
-                els.svg.appendChild(label);
+                els.overlay.appendChild(label);
             });
         }
 
-        // draft polygon (currently being drawn)
-        if (state.draftPoints.length > 0) {
-            if (state.draftPoints.length >= 2) {
-                var draft = document.createElementNS(SVG_NS, 'polyline');
-                draft.setAttribute('points', pointsToAttr(state.draftPoints));
-                draft.setAttribute('class', 'oe-poly oe-poly--draft');
-                draft.setAttribute('fill', 'none');
-                els.svg.appendChild(draft);
-            }
-            state.draftPoints.forEach(function (p) {
-                var dot = document.createElementNS(SVG_NS, 'circle');
-                dot.setAttribute('cx', p[0]); dot.setAttribute('cy', p[1]);
-                dot.setAttribute('r', '0.6');
-                dot.setAttribute('class', 'oe-vertex');
-                els.svg.appendChild(dot);
-            });
+        if (state.draftPoints.length >= 2) {
+            var draft = document.createElementNS(SVG_NS, 'polyline');
+            draft.setAttribute('points', pointsToAttr(state.draftPoints));
+            draft.setAttribute('class', 'oe-poly oe-poly--draft');
+            draft.setAttribute('fill', 'none');
+            els.svg.appendChild(draft);
         }
+        state.draftPoints.forEach(function (p) {
+            var dot = document.createElement('div');
+            dot.className = 'oe-vertex-dot';
+            dot.style.left = p[0] + '%';
+            dot.style.top  = p[1] + '%';
+            els.overlay.appendChild(dot);
+        });
     }
 
     function centroid(pts) {
