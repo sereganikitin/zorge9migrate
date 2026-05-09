@@ -155,6 +155,38 @@ class OutlineEditorController extends PluginController {
             throw new RuntimeException('rename failed: ' . $path);
         }
 
-        return ['ok' => true, 'count' => count($clean), 'updated_at' => $out['updated_at']];
+        $bridge = $this->refreshBridge();
+
+        return [
+            'ok'         => true,
+            'count'      => count($clean),
+            'updated_at' => $out['updated_at'],
+            'bridge'     => $bridge,
+        ];
+    }
+
+    /**
+     * Запускает feed-pull.php чтобы пересоздать /hydra/svg/floor_raster/<b>-<f>.png
+     * + _selection.svg + обновить map.json. Без этого нарисованные обводки не
+     * увидит фронт до следующего cron-тика.
+     *
+     * Скрипт-CLI, не отдаёт HTTP. Гасим ошибки в массив, не валим сохранение.
+     */
+    private function refreshBridge(): array {
+        $script = CMS_ROOT . '/scripts/feed-pull.php';
+        if (!is_file($script)) {
+            return ['triggered' => false, 'error' => 'feed-pull.php missing'];
+        }
+        $cmd = '/usr/bin/php ' . escapeshellarg($script) . ' 2>&1';
+        $started = microtime(true);
+        $output = []; $exit = 0;
+        @exec($cmd, $output, $exit);
+        $elapsed = round(microtime(true) - $started, 2);
+        return [
+            'triggered' => true,
+            'exit'      => $exit,
+            'elapsed_s' => $elapsed,
+            'tail'      => array_slice($output, -2),
+        ];
     }
 }

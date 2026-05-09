@@ -33,12 +33,14 @@ declare(strict_types=1);
 
 if (PHP_SAPI !== 'cli') { http_response_code(403); exit('CLI only'); }
 
-const PROFITBASE_URL = 'https://pb7828.profitbase.ru/export/profitbase_xml/2d1c9a6fdf95ba53617e48f4ceef5556?scheme=https';
-const OUT_FILE       = '/var/www/old.zorge9.com/htdocs/hydra/json/data.json';
-const TMP_FILE       = OUT_FILE . '.tmp';
-const MAP_FILE       = '/var/www/old.zorge9.com/htdocs/hydra/svg/map.json';
-const MAP_TMP_FILE   = MAP_FILE . '.tmp';
-const HTTP_TIMEOUT   = 90;
+const PROFITBASE_URL    = 'https://pb7828.profitbase.ru/export/profitbase_xml/2d1c9a6fdf95ba53617e48f4ceef5556?scheme=https';
+const OUT_FILE          = '/var/www/old.zorge9.com/htdocs/hydra/json/data.json';
+const TMP_FILE          = OUT_FILE . '.tmp';
+const MAP_FILE          = '/var/www/old.zorge9.com/htdocs/hydra/svg/map.json';
+const MAP_TMP_FILE      = MAP_FILE . '.tmp';
+const OUTLINES_FILE     = '/var/www/old.zorge9.com/htdocs/hydra/svg/outlines.json';
+const FLOOR_RASTER_DIR  = '/var/www/old.zorge9.com/htdocs/hydra/svg/floor_raster';
+const HTTP_TIMEOUT      = 90;
 
 // Имя floor-SVG-файла (без префикса `/floor/` и без `.svg`).
 // Часть этажей в проекте типовые и шарят один SVG (например все этажи 10-18
@@ -198,6 +200,109 @@ function cf(SimpleXMLElement $offer, string $name): string {
 function cf_float(SimpleXMLElement $offer, string $name): float {
     $v = cf($offer, $name);
     return ($v === '' || !is_numeric($v)) ? 0.0 : (float) $v;
+}
+
+/** Читает outlines.json (записывается из admin-плагина). Возвращает map key→outline. */
+function load_outlines(): array {
+    $raw = @file_get_contents(OUTLINES_FILE);
+    if ($raw === false) return [];
+    $d = json_decode($raw, true);
+    if (!is_array($d) || !isset($d['outlines']) || !is_array($d['outlines'])) return [];
+    return $d['outlines'];
+}
+
+/** [[x,y],...] (% от растра) → SVG path d-атрибут. */
+function polygon_to_path(array $polygon): string {
+    if (count($polygon) < 3) return '';
+    $d = '';
+    foreach ($polygon as $i => $pt) {
+        if (!is_array($pt) || count($pt) !== 2) return '';
+        $cmd = $i === 0 ? 'M' : 'L';
+        $d .= $cmd . round((float)$pt[0], 3) . ' ' . round((float)$pt[1], 3) . ' ';
+    }
+    return rtrim($d) . ' Z';
+}
+
+/**
+ * Генерирует _selection.svg для (b,f). Формат строго совместим с тем что
+ * читает area2svg.js: <g id="SELECTION"> со списком <path>.
+ *
+ * area2svg сопоставляет path с квартирой по формуле:
+ *     alt = target_flats[N - path_index].id
+ * где target_flats[flat.floor_num] = flat, N = размер target_flats.
+ * Чтобы это работало:
+ *   1. floor_num должны быть плотным набором 1..N (не sparse Profitbase pos)
+ *   2. paths идут в порядке убывания floor_num: path[0] = floor_num=N
+ *
+ * Принимает $phys_seq — словарь "b-f-phys_n" => 1..N (один номер на
+ * физическую ячейку, варианты делят его). Для каждого порядкового
+ * номера эмитим один path: либо реальный полигон обводки, либо
+ * невидимую заглушку, если ни для одного варианта не нарисована.
+ */
+function generate_selection_svg(int $b, int $f, array $apartments, array $outlines, array $phys_seq): string {
+    $fk = "$b-$f";
+    $seq_to_polygon = [];   // seq => polygon (or null)
+    $max_seq = 0;
+    foreach ($apartments as $key => $a) {
+        if ((int)$a['b'] !== $b || (int)$a['f'] !== $f) continue;
+        $phys_key = $fk . '-' . (intdiv((int)$a['n'], 10) * 10);
+        $seq = $phys_seq[$phys_key] ?? 0;
+        if ($seq <= 0) continue;
+        $max_seq = max($max_seq, $seq);
+        if (!isset($seq_to_polygon[$seq]) && isset($outlines[$key]['polygon'])
+            && is_array($outlines[$key]['polygon'])
+            && count($outlines[$key]['polygon']) >= 3) {
+            $seq_to_polygon[$seq] = $outlines[$key]['polygon'];
+        }
+    }
+    if ($max_seq === 0) return '';
+
+    $paths_xml = '';
+    for ($seq = $max_seq; $seq >= 1; $seq--) {  // descending
+        $poly = $seq_to_polygon[$seq] ?? null;
+        $d = ($poly !== null) ? polygon_to_path($poly) : '';
+        if ($d === '') $d = 'M-1 -1 L-1 -1 Z';
+        $paths_xml .= '<path fill="none" d="' . htmlspecialchars($d, ENT_QUOTES) . '"/>';
+    }
+
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none">'
+         . '<g id="SELECTION">' . $paths_xml . '</g></svg>';
+}
+
+/** Скачивает раз; обновляет если URL изменился (в .url marker-файле). */
+function mirror_raster(string $url, string $local_path): bool {
+    if ($url === '') return false;
+    $marker = $local_path . '.url';
+    $cached = @file_get_contents($marker);
+    if (file_exists($local_path) && $cached === $url) return true;
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => HTTP_TIMEOUT,
+        CURLOPT_FAILONERROR    => true,
+        CURLOPT_FOLLOWLOCATION => true,
+    ]);
+    $bytes = curl_exec($ch);
+    if ($bytes === false) {
+        fwrite(STDERR, "[feed-pull] WARN: failed to mirror raster $url: " . curl_error($ch) . "\n");
+        curl_close($ch); return false;
+    }
+    curl_close($ch);
+
+    $tmp = $local_path . '.tmp';
+    if (file_put_contents($tmp, $bytes) === false) return false;
+    if (!rename($tmp, $local_path)) { @unlink($tmp); return false; }
+    @file_put_contents($marker, $url);
+    return true;
+}
+
+/** Записать файл атомарно (через .tmp и rename). */
+function write_atomic(string $path, string $content): bool {
+    $tmp = $path . '.tmp';
+    if (file_put_contents($tmp, $content) === false) return false;
+    if (!rename($tmp, $path)) { @unlink($tmp); return false; }
+    return true;
 }
 
 // --- main -----------------------------------------------------------
@@ -425,6 +530,7 @@ foreach ($apartments as $a) {
 // (016/1), варианты /2 /3 идут с пустым полем. Поэтому собираем lookup по
 // "физическому" ключу (b, f, n_base*100 + suffix_code*10) — он стабилен для
 // всех вариантов одной и той же ячейки — и подставляем p, если в offer пусто.
+// Profitbase position-on-floor: применяем fallback (для variants /2 /3 без поля).
 $pos_lookup = [];
 foreach ($apartments as $a) {
     if ($a['_pos_on_floor'] > 0) {
@@ -432,18 +538,100 @@ foreach ($apartments as $a) {
         $pos_lookup[$phys] = $a['_pos_on_floor'];
     }
 }
+foreach ($apartments as $key => &$a) {
+    if ($a['_pos_on_floor'] === 0) {
+        $phys = "{$a['b']}-{$a['f']}-" . (intdiv($a['n'], 10) * 10);
+        $a['_pos_on_floor'] = $pos_lookup[$phys] ?? 0;
+    }
+}
+unset($a);
+
+// Сортируем apartments так, чтобы предпочтительные варианты (AVAILABLE > BOOKED > UNAVAILABLE)
+// шли ПОСЛЕДНИМИ в каждой физической ячейке. Это важно: area2svg делает
+// `target_flats[flat.floor_num] = flat;` — last-write-wins. Иначе клик
+// по полигону мог бы вести на UNAVAILABLE-вариант когда есть свободный.
+$status_priority = function (int $st): int {
+    if ($st === 0) return 0;  // UNAVAILABLE — пишется первым
+    if ($st === 2) return 1;  // BOOKED
+    return 2;                  // AVAILABLE — последним, перезатрёт остальных
+};
+uasort($apartments, function ($a, $b) use ($status_priority) {
+    $cmp = $a['b'] <=> $b['b']; if ($cmp !== 0) return $cmp;
+    $cmp = $a['f'] <=> $b['f']; if ($cmp !== 0) return $cmp;
+    $pa = intdiv($a['n'], 10) * 10;
+    $pb = intdiv($b['n'], 10) * 10;
+    $cmp = $pa <=> $pb; if ($cmp !== 0) return $cmp;
+    return $status_priority($a['st']) <=> $status_priority($b['st']);
+});
+
+// p_seq: плотный 1..N в каждом этаже, варианты одной ячейки делят номер.
+// Используется как floor_num на динамических этажах (где area2svg требует
+// плотного набора ключей в target_flats).
+$phys_seq = [];           // "b-f-phys_n" => seq
+$next_seq_per_floor = []; // "b-f" => next int
+foreach ($apartments as $a) {
+    $fk = $a['b'] . '-' . $a['f'];
+    $phys_key = $fk . '-' . (intdiv($a['n'], 10) * 10);
+    if (!isset($phys_seq[$phys_key])) {
+        $next = ($next_seq_per_floor[$fk] ?? 0) + 1;
+        $next_seq_per_floor[$fk] = $next;
+        $phys_seq[$phys_key] = $next;
+    }
+}
+
+// --- bridge: outlines.json → per-floor _selection.svg + mirrored raster ---
+$outlines = load_outlines();
+$dynamic_floors = [];  // "b-f" => true
+foreach ($apartments as $key => $a) {
+    if (isset($outlines[$key]) && !empty($outlines[$key]['polygon'])) {
+        $dynamic_floors[$a['b'] . '-' . $a['f']] = true;
+    }
+}
+
+$mirrored = 0; $sel_written = 0;
+if (!empty($dynamic_floors)) {
+    if (!is_dir(FLOOR_RASTER_DIR) && !@mkdir(FLOOR_RASTER_DIR, 0755, true) && !is_dir(FLOOR_RASTER_DIR)) {
+        fail('cannot create ' . FLOOR_RASTER_DIR);
+    }
+    foreach ($dynamic_floors as $fk => $_) {
+        [$b, $f] = array_map('intval', explode('-', $fk));
+
+        $sel = generate_selection_svg($b, $f, $apartments, $outlines, $phys_seq);
+        if ($sel !== '') {
+            if (write_atomic(FLOOR_RASTER_DIR . "/{$fk}_selection.svg", $sel)) $sel_written++;
+        }
+
+        $raster_url = $floors[$fk]['floor_img'] ?? '';
+        if ($raster_url !== '' && mirror_raster($raster_url, FLOOR_RASTER_DIR . "/{$fk}.png")) {
+            $mirrored++;
+        }
+    }
+}
+
 $map_flats = [];
 foreach ($apartments as $key => $a) {
     $b = $a['b']; $f = $a['f'];
-    $p = $a['_pos_on_floor'];
-    if ($p === 0) {
-        $phys = "{$b}-{$f}-" . (intdiv($a['n'], 10) * 10);
-        $p = $pos_lookup[$phys] ?? 0;
-    }
     $fn = floor_svg_name($b, $f);
+    $fk = "$b-$f";
+    $is_dynamic = isset($dynamic_floors[$fk]);
+
+    if ($is_dynamic) {
+        // Динамический этаж: plотный p_seq (для area2svg), без статичной
+        // SVG-обводки квартиры (её рисует админ; индивидуального плана нет).
+        $phys_key = $fk . '-' . (intdiv($a['n'], 10) * 10);
+        $p = $phys_seq[$phys_key] ?? 0;
+        $apartment_paths = [];
+        $floor_path = "/floor_raster/{$fk}.png";
+    } else {
+        // Статический этаж: оставляем старое поведение с Profitbase pos-on-floor.
+        $p = $a['_pos_on_floor'];
+        $apartment_paths = $p > 0 ? ["/apartment/{$fn}-p{$p}.svg"] : [];
+        $floor_path = "/floor/{$fn}.svg";
+    }
+
     $map_flats[$key] = [
-        'apartment' => $p > 0 ? ["/apartment/{$fn}-p{$p}.svg"] : [],
-        'floor'     => ["/floor/{$fn}.svg"],
+        'apartment' => $apartment_paths,
+        'floor'     => [$floor_path],
         'building'  => [building_svg_path($b)],
         'p'         => $p,
     ];
@@ -473,9 +661,11 @@ if (!rename(TMP_FILE, OUT_FILE)) fail('atomic rename failed');
 
 $elapsed = round(microtime(true) - $started, 2);
 $total = count($apartments);
+$dyn_n = count($dynamic_floors);
 fwrite(STDOUT, "[feed-pull] " . date('c') . " ok: $total apartments, "
     . "skipped: sold/exec=" . $counts['sold']
     . " not-apt=" . $counts['wrong_type']
     . " no-bldg=" . $counts['no_building']
     . " collisions=" . $counts['collision']
+    . " | dynamic floors: $dyn_n (sel=$sel_written, raster=$mirrored)"
     . ", {$elapsed}s\n");
