@@ -25,6 +25,17 @@
     stroke: rgb(172, 150, 109) !important;
 }
 
+/* BOOKED-полигоны: видимая обводка (как у AVAILABLE), но без клика
+ * и без hover-эффекта. Лейбл «Бронь» area2svg сам ставит для st=2. */
+.plan_frame_content_centrer path.oe-booked {
+    pointer-events: none !important;
+    cursor: default !important;
+}
+.plan_frame_content_centrer path.oe-booked:hover {
+    fill: rgba(255, 255, 255, 0.3) !important;
+    stroke: rgb(255, 255, 255) !important;
+}
+
 /* Подпись площади: всегда чёрная, мельче дефолтной (calc(var(--ind) * 2.7)),
  * z-index выше чтобы не пряталась под top-svg-обводкой. По DOM-структуре
  * area2svg popups сидят между raster-div и top-svg — без z-index их

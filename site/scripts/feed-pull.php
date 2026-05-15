@@ -264,20 +264,31 @@ function generate_selection_svg(int $b, int $f, array $apartments, array $outlin
     }
     if ($max_seq === 0) return '';
 
-    // Реальные полигоны помечаем class="oe-active". Стили висят в
-    // /assets/css/floor_raster.css (подключается в plans.phtml):
-    //   - дефолт: белая заливка 50% + белый контур
-    //   - :hover: золотая заливка + золотой контур
-    // CSS использовать обязательно вместо inline style — :hover нельзя
-    // прописать в inline. Класс попадает в обе area2svg path-копии (top
-    // и bottom), но виден только top — он рисуется ПОВЕРХ растра.
+    // Реальные полигоны помечаем class="oe-active" (+ oe-booked для st=2).
+    // Стили в /assets/css/floor_raster.css (подключается в plans.phtml):
+    //   - oe-active дефолт: белая заливка 30% + белый контур
+    //   - oe-active :hover: золотая заливка + золотой контур
+    //   - oe-booked: pointer-events: none (некликабельный полигон с
+    //     лейблом «Бронь» — текст ставится area2svg-ом для st=2)
+    // CSS вместо inline style — :hover нельзя прописать в inline.
+    // Чтобы знать какие seq → BOOKED, отдельно собираем status по seq:
+    $seq_to_status = [];
+    foreach ($apartments as $key => $a) {
+        if ((int)$a['b'] !== $b || (int)$a['f'] !== $f) continue;
+        $seq = $apt_seq[$key] ?? 0;
+        if ($seq > 0 && (int)$a['st'] !== 0) {
+            $seq_to_status[$seq] = (int)$a['st'];
+        }
+    }
+
     $paths_xml = '';
     for ($seq = $max_seq; $seq >= 1; $seq--) {  // descending
         $poly = $seq_to_polygon[$seq] ?? null;
         if ($poly !== null) {
             $d = polygon_to_path($poly, (float)$w, (float)$h);
             if ($d !== '') {
-                $paths_xml .= '<path class="oe-active" d="' . htmlspecialchars($d, ENT_QUOTES) . '"/>';
+                $cls = 'oe-active' . (($seq_to_status[$seq] ?? 0) === 2 ? ' oe-booked' : '');
+                $paths_xml .= '<path class="' . $cls . '" d="' . htmlspecialchars($d, ENT_QUOTES) . '"/>';
                 continue;
             }
         }
