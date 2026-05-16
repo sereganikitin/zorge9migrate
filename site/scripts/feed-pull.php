@@ -105,6 +105,7 @@ const STATUS_MAP = [
     'UNAVAILABLE' => 0,
 ];
 const ST_AVAILABLE = 1;
+const ST_BOOKED    = 2;
 
 const BUILDING_MAP = [
     'Madison'   => 1,
@@ -528,7 +529,12 @@ foreach ($apartments as $a) {
         $floors[$fk]['floor_img'] = $a['floor_img'];
     }
 
-    if ($st === ST_AVAILABLE) {
+    // Считаем «активные лоты» = AVAILABLE + BOOKED. Бронь — это ещё не
+    // проданная квартира (потенциально может вернуться в продажу), поэтому
+    // в счётчиках buildings/floors `at` и `arc` (по rooms-count) мы её
+    // включаем. Профит другого сайта (другой инстанс с тем же фидом)
+    // считает так же — 21 Madison активных = 17 AVAILABLE + 4 BOOKED.
+    if ($st === ST_AVAILABLE || $st === ST_BOOKED) {
         $rc_key = ($rc >= 1 && $rc <= 3) ? $rc : 1;
 
         $buildings[$b]['at']++;
