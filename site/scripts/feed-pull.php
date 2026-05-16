@@ -348,6 +348,10 @@ $xml = @simplexml_load_string($xml_str);
 if ($xml === false) fail('xml parse failed');
 
 $apartments = [];
+// floor_extras: (b, f) => raster URL. Накапливаем растр-планы из ЛЮБЫХ
+// offer-ов (даже SOLD/EXECUTION). Profitbase для проданных этажей часто
+// сохраняет plan-floor URL, и мы можем использовать их как фон phantom-этажей.
+$floor_extras = [];
 $counts = ['wrong_type' => 0, 'no_building' => 0, 'no_status' => 0, 'sold' => 0, 'collision' => 0, 'malformed' => 0];
 
 foreach ($xml->offer as $o) {
@@ -358,6 +362,22 @@ foreach ($xml->offer as $o) {
     if ($b === null) { $counts['no_building']++; continue; }
 
     $status = (string) $o->status;
+
+    // Извлекаем plan-floor для floor_extras ЛЮБОГО статуса (включая SOLD).
+    // Используется ниже для phantom-этажей у которых нет AVAIL/BOOK/UNAV апт-ов.
+    $floor_for_extras = (int)$o->floor;
+    if ($floor_for_extras > 0 && !isset($floor_extras["$b-$floor_for_extras"])) {
+        foreach ($o->image as $im) {
+            if ((string)$im['type'] === 'plan floor') {
+                $url = trim((string)$im);
+                if ($url !== '') {
+                    $floor_extras["$b-$floor_for_extras"] = $url;
+                    break;
+                }
+            }
+        }
+    }
+
     if (!isset(STATUS_MAP[$status])) {
         $counts['sold']++; continue;
     }
@@ -624,13 +644,39 @@ foreach ($apartments as $key => $a) {
     $apt_seq[$key] = $next;
 }
 
+// --- phantom этажи: 1..maxf для каждого корпуса ---
+// Profitbase непоследовательно чистит свой инвентарь: для одних этажей
+// оставляет SOLD-записи (они появляются в floors с at=0), для других
+// удаляет все offer-ы кроме SOLD (этаж исчезает из active-инвентаря, но
+// растровый план в фиде часто ОСТАЁТСЯ — мы собрали его в $floor_extras).
+// Досоздаём пустые floors[b-f] для f∈[1, maxf] ТОЛЬКО если есть растр.
+// Если растра нет (например Madison floor 4) — этаж скрываем полностью.
+foreach ($buildings as $b => $bldg) {
+    $maxf = (int)$bldg['maxf'];
+    for ($f = 1; $f <= $maxf; $f++) {
+        $fk = "$b-$f";
+        if (isset($floors[$fk])) continue;
+        $raster_url = $floor_extras[$fk] ?? '';
+        if ($raster_url === '') continue;  // нет растра — этаж скрываем
+        $floors[$fk] = [
+            'arc'       => [1=>0, 2=>0, 3=>0],
+            'at'        => 0,
+            'tc'        => ['min' => null, 'max' => null],
+            'sq'        => ['min' => null, 'max' => null],
+            'maxf'      => 1,
+            'floor_img' => $raster_url,
+        ];
+    }
+}
+ksort($floors, SORT_NATURAL);
+
 // --- bridge: outlines.json → per-floor _selection.svg + mirrored raster ---
-// На динамику переходят ВСЕ этажи у которых есть floor_img в фиде (а не
-// только этажи с нарисованными обводками). Полигоны для квартир без
-// обводки — невидимые dummy за экраном; квартиры всё равно отображаются
-// в боковой панели с площадью, просто не кликабельны на схеме.
+// На динамику переходят ВСЕ этажи у которых есть floor_img в фиде (включая
+// phantom-этажи добавленные выше). Для квартир без обводки — невидимые dummy.
+// Для phantom-этажей нет апт-ов вообще — selection.svg не генерируется,
+// только зеркалим растр.
 $outlines = load_outlines();
-$dynamic_floors = [];  // "b-f" => true
+$dynamic_floors = [];
 foreach ($floors as $fk => $fl) {
     if (!empty($fl['floor_img'])) {
         $dynamic_floors[$fk] = true;
@@ -681,30 +727,6 @@ foreach ($floors as $fk => &$fl) {
         : '/floor/' . floor_svg_name($b, $f) . '.svg';
 }
 unset($fl);
-
-// --- phantom этажи: 1..maxf для каждого корпуса ---
-// Profitbase непоследовательно чистит свой инвентарь: для одних этажей
-// оставляет SOLD-записи (они появляются в floors с at=0), для других
-// удаляет все offer-ы (этаж исчезает из селектора). Для единообразия
-// досоздаём пустые floors[b-f] для каждого f∈[1, maxf]. Они отрисуются
-// со старым SVG-планом + дисклеймером «Апартаменты доступны по запросу».
-foreach ($buildings as $b => $bldg) {
-    $maxf = (int)$bldg['maxf'];
-    for ($f = 1; $f <= $maxf; $f++) {
-        $fk = "$b-$f";
-        if (isset($floors[$fk])) continue;
-        $floors[$fk] = [
-            'arc'       => [1=>0, 2=>0, 3=>0],
-            'at'        => 0,
-            'tc'        => ['min' => null, 'max' => null],
-            'sq'        => ['min' => null, 'max' => null],
-            'maxf'      => 1,
-            'floor_img' => '',
-            'floor_svg' => '/floor/' . floor_svg_name($b, $f) . '.svg',
-        ];
-    }
-}
-ksort($floors, SORT_NATURAL);
 
 $map_flats = [];
 foreach ($apartments as $key => $a) {
