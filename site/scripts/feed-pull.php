@@ -670,6 +670,42 @@ if (!empty($dynamic_floors)) {
     }
 }
 
+// --- floor_svg field в data.json ---
+// Записываем путь к floor-SVG/растру прямо в floors[fk]. ApiJsonController
+// раньше брал это из map.json[apt_key].floor (нужен был апт чтобы получить
+// путь). Теперь — независимо от апт-ов, можно отдавать пустые этажи.
+foreach ($floors as $fk => &$fl) {
+    [$b, $f] = array_map('intval', explode('-', $fk));
+    $fl['floor_svg'] = isset($dynamic_floors[$fk])
+        ? "/floor_raster/{$fk}.png"
+        : '/floor/' . floor_svg_name($b, $f) . '.svg';
+}
+unset($fl);
+
+// --- phantom этажи: 1..maxf для каждого корпуса ---
+// Profitbase непоследовательно чистит свой инвентарь: для одних этажей
+// оставляет SOLD-записи (они появляются в floors с at=0), для других
+// удаляет все offer-ы (этаж исчезает из селектора). Для единообразия
+// досоздаём пустые floors[b-f] для каждого f∈[1, maxf]. Они отрисуются
+// со старым SVG-планом + дисклеймером «Апартаменты доступны по запросу».
+foreach ($buildings as $b => $bldg) {
+    $maxf = (int)$bldg['maxf'];
+    for ($f = 1; $f <= $maxf; $f++) {
+        $fk = "$b-$f";
+        if (isset($floors[$fk])) continue;
+        $floors[$fk] = [
+            'arc'       => [1=>0, 2=>0, 3=>0],
+            'at'        => 0,
+            'tc'        => ['min' => null, 'max' => null],
+            'sq'        => ['min' => null, 'max' => null],
+            'maxf'      => 1,
+            'floor_img' => '',
+            'floor_svg' => '/floor/' . floor_svg_name($b, $f) . '.svg',
+        ];
+    }
+}
+ksort($floors, SORT_NATURAL);
+
 $map_flats = [];
 foreach ($apartments as $key => $a) {
     $b = $a['b']; $f = $a['f'];
