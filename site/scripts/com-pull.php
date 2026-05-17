@@ -239,6 +239,55 @@ function load_outlines_com(): array {
 }
 
 /**
+ * Bridge: outline_editor рисует обводки против residential pipeline
+ * (data.json apartments, outlines.json keyed by "b-f-n"). Для apts
+ * с commercial-offset b (4-7, 11-13 в моей data.json-схеме) эти полигоны
+ * нужно перевести в com.json-format ("b-s-f-n") по совпадению Profitbase
+ * internal-id, чтобы они попали в _selection.svg commercial-pipeline.
+ *
+ * Координаты polygon-а одинаковые: и residential раст-фон в /floor_raster/,
+ * и commercial раст в /floor_com/ мирорятся из ОДНОГО Profitbase plan-floor
+ * URL → одинаковые dimensions → полигоны fit.
+ *
+ * Возвращает map "com_key" => ['polygon' => [[x,y],...]] — готовый
+ * к merge в $outlines_com.
+ */
+function load_residential_bridged_outlines(array $com_apartments): array {
+    $data_path = '/var/www/old.zorge9.com/htdocs/hydra/json/data.json';
+    $outlines_path = '/var/www/old.zorge9.com/htdocs/hydra/svg/outlines.json';
+    if (!file_exists($data_path) || !file_exists($outlines_path)) return [];
+
+    $data_raw = @file_get_contents($data_path);
+    $outlines_raw = @file_get_contents($outlines_path);
+    if ($data_raw === false || $outlines_raw === false) return [];
+
+    $data = json_decode($data_raw, true);
+    $outlines = json_decode($outlines_raw, true);
+    if (!is_array($data) || !isset($data['apartments'])) return [];
+    if (!is_array($outlines) || !isset($outlines['outlines'])) return [];
+
+    // Profitbase id (string) → com.json key
+    $id_to_com_key = [];
+    foreach ($com_apartments as $key => $apt) {
+        $aid = (string)($apt['id'] ?? '');
+        if ($aid !== '') $id_to_com_key[$aid] = $key;
+    }
+    if (empty($id_to_com_key)) return [];
+
+    $bridged = [];
+    foreach ($outlines['outlines'] as $res_key => $entry) {
+        if (!isset($data['apartments'][$res_key])) continue;
+        $res_apt = $data['apartments'][$res_key];
+        $aid = (string)($res_apt['id'] ?? '');
+        if ($aid === '' || !isset($id_to_com_key[$aid])) continue;
+        // Только полигоны валидной формы
+        if (!isset($entry['polygon']) || !is_array($entry['polygon']) || count($entry['polygon']) < 3) continue;
+        $bridged[$id_to_com_key[$aid]] = ['polygon' => $entry['polygon']];
+    }
+    return $bridged;
+}
+
+/**
  * polygon [[x,y],...] (0..100 %) → SVG path d-атрибут в пикселях viewBox.
  */
 function polygon_to_path(array $polygon, float $w, float $h): string {
@@ -490,6 +539,19 @@ foreach ($xml->offer as $o) {
     $apartments[$key] = $apt;
 }
 
+// Bridge: outline_editor рисует обводки в residential pipeline (outlines.json,
+// ключи b-f-n у data.json apartments). Для commercial apt-ов переводим их в
+// com.json-ключи и мерджим в $outlines_com (если в outlines_com.json не было
+// своей записи для этого apt-а). См. load_residential_bridged_outlines() выше.
+$bridged_outlines = load_residential_bridged_outlines($apartments);
+$bridged_count = 0;
+foreach ($bridged_outlines as $com_key => $entry) {
+    if (!isset($outlines_com[$com_key])) {
+        $outlines_com[$com_key] = $entry;
+        $bridged_count++;
+    }
+}
+
 // --- агрегаты floors и buildings ---
 $floors = [];     // "b-f" => { at, atr, arc:{0:N}, maxf:1 }
 $buildings = [];  // b => { at, atr, arc:{0:N}, maxf }
@@ -659,4 +721,5 @@ $total = count($apartments);
 fwrite(STDOUT, "[com-pull] " . date('c') . " ok: $total apts ({$counts['preserved']} preserved, {$counts['new']} new), "
     . "skipped: status={$counts['skipped_status']} building={$counts['skipped_building']} no-n={$counts['skipped_n']} "
     . "collisions={$counts['collision']} | rasters: {$rasters_mirrored} mirrored, {$rasters_skipped} failed | "
-    . "selections: $selections_written written, $selections_preserved preserved (hand-drawn), {$elapsed}s\n");
+    . "selections: $selections_written written, $selections_preserved preserved (hand-drawn) | "
+    . "outlines bridged from residential: $bridged_count, {$elapsed}s\n");
