@@ -95,10 +95,24 @@ jobs:
           echo "=== Total ==="
           du -sh _server_dump
 
+      - name: Upload as artifact (fallback if push fails)
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-dump
+          path: _server_dump/
+          retention-days: 7
+
       - name: Commit to discovery branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "discover-bot"
           git config user.email "discover@users.noreply.github.com"
+          # Чиним remote URL с явной auth — иначе persist-credentials от
+          # actions/checkout может не сработать для push в новую ветку
+          # на репах с restrictive workflow permissions.
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
+
           BR="discover/$(date -u +%Y%m%d-%H%M%S)"
           git checkout -b $BR
           git add _server_dump/
@@ -107,6 +121,13 @@ jobs:
             exit 0
           fi
           git commit -m "discover: dump untracked server files for inspection"
-          git push origin $BR
-          echo "::notice::Pulled files into branch $BR"
-          echo "Review: https://github.com/${{ github.repository }}/tree/$BR/_server_dump"
+
+          if git push origin $BR; then
+            echo "::notice::Pulled files into branch $BR"
+            echo "Review: https://github.com/${{ github.repository }}/tree/$BR/_server_dump"
+          else
+            echo "::warning::git push failed — likely repo Workflow permissions are read-only."
+            echo "::warning::Fix: Settings → Actions → General → Workflow permissions → Read and write permissions."
+            echo "::notice::Files still available as artifact 'server-dump' attached to this run."
+            exit 1
+          fi
