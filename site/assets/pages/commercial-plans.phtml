@@ -241,6 +241,15 @@
     stroke-width: 3.5 !important;
 }
 
+/* Полигоны и popup-ы для НЕдоступных apt-ов (status ∉ {1, 2}). Класс
+ * com-hidden навешивается JS-ом (см. applyTenants). На sale-странице
+ * скрываем SOLD/UNAVAILABLE, на rent — closed/leased. Так на поэтажке
+ * видны только реально продающиеся/сдающиеся помещения. */
+.plan_frame.n0 .plan_frame_content path.com-hidden,
+.plan_frame.n0 .flat_popup_item.com-hidden {
+    display: none !important;
+}
+
 /* Tenant <text> рендерится в _selection.svg на TOP-слое — естественно
  * лежит над растром. Белый fill с тёмным stroke для читаемости. */
 .plan_frame.n0 .plan_frame_content text.oe-tenant-label {
@@ -328,6 +337,12 @@
         return window.data.commercial.apartments;
     }
 
+    // Sale-страница → проверяем .st, rent → .str. window.type
+    // определён в <script> вверху commercial-plans.phtml.
+    function statusField() {
+        return (window.type === 'sale') ? 'st' : 'str';
+    }
+
     function applyTenants() {
         var inst = area2svgInstance();
         if (!inst) return;
@@ -337,15 +352,11 @@
         var popups = document.querySelectorAll('.plan_frame.n0 .flat_popup_item');
         if (!popups.length) return;
 
-        // Собираем paths в массив. area2svg обрабатывает selection.svg path-ы
-        // по очереди, для каждого вызывает options.each → плагин flowering
-        // floor_info.add → popups_template → append popup HTML. Popup-ы потом
-        // вставляются единым блоком (.before(html)). Это значит popups[i]
-        // соответствует path-у с индексом i — стабильный матч по INDEX.
-        //
-        // Раньше я матчил по позиции (centroid → top/left %) но это рушится
-        // после resize / pjax-перерисовки: path.paper_* или getCentroid()
-        // могут возвращать другое значение чем когда popup был создан.
+        // area2svg обрабатывает selection.svg path-ы по очереди, для каждого
+        // вызывает options.each → floor_info.add → popups_template → append
+        // popup HTML. Popup-ы потом вставляются единым блоком (.before(html)).
+        // Значит popups[i] соответствует path-у с индексом i — стабильный
+        // матч по INDEX (раньше был position-match, рушился при resize/pjax).
         var paths = [];
         inst.forEach(function (path) { paths.push(path); });
 
@@ -354,18 +365,37 @@
             return;
         }
 
-        var withTenant = 0, matched = 0, already = 0;
+        var typeSt = statusField();
+        var withTenant = 0, matched = 0, already = 0, hidden = 0, shown = 0;
         for (var i = 0; i < paths.length; i++) {
             var path = paths[i];
             var alt = path.alt;
             var apt = apts[alt];
-            if (!apt) {
-                if (i < 3) log('no apt for alt=' + alt);
-                continue;
-            }
-            if (!apt.tenant) continue;
-            withTenant++;
+
+            // Видимость: показываем только AVAILABLE (1) и BOOKED (2) на
+            // соответствующем type. SOLD/UNAVAILABLE/Сдан/Закрыт — скрываем.
+            var status = apt ? Number(apt[typeSt]) : 0;
+            var isActive = (status === 1 || status === 2);
+
+            // Hide path на обоих слоях (top + bottom) + popup на том же index
+            var topNode = path.node;
+            var bottomNode = path.bottom && path.bottom.node;
             var p = popups[i];
+            if (isActive) {
+                if (topNode) topNode.classList.remove('com-hidden');
+                if (bottomNode) bottomNode.classList.remove('com-hidden');
+                if (p) p.classList.remove('com-hidden');
+                shown++;
+            } else {
+                if (topNode) topNode.classList.add('com-hidden');
+                if (bottomNode) bottomNode.classList.add('com-hidden');
+                if (p) p.classList.add('com-hidden');
+                hidden++;
+                continue;  // не пытаемся ставить tenant на скрытый
+            }
+
+            if (!apt || !apt.tenant) continue;
+            withTenant++;
             if (p.dataset.tenantApplied === '1') { already++; continue; }
             var letter = p.querySelector('.letter');
             if (letter) {
@@ -376,6 +406,7 @@
             }
         }
         log('summary: paths=' + paths.length + ' popups=' + popups.length
+            + ' shown=' + shown + ' hidden=' + hidden
             + ' withTenant=' + withTenant + ' matched=' + matched + ' already=' + already);
     }
 
