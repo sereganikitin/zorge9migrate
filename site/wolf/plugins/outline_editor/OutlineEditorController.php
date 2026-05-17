@@ -68,11 +68,12 @@ class OutlineEditorController extends PluginController {
             $f = (int)($a['f'] ?? 0);
             $floor_key = "$b-$f";
             if (!isset($floors[$floor_key])) {
-                $floor_img = $data['floors'][$floor_key]['floor_img'] ?? '';
+                $floor_meta = $data['floors'][$floor_key] ?? [];
                 $floors[$floor_key] = [
                     'b'         => $b,
                     'f'         => $f,
-                    'floor_img' => $floor_img,
+                    'label'     => (string)($floor_meta['label'] ?? $f),
+                    'floor_img' => (string)($floor_meta['floor_img'] ?? ''),
                     'aparts'    => [],
                 ];
             }

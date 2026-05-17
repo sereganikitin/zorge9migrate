@@ -210,9 +210,17 @@ function parse_commercial_number(string $number): array {
     return [$tr_n, $n];
 }
 
-function building_id(string $house_name): ?int {
+function building_id(string $house_name, bool $is_commercial = false): ?int {
     foreach (BUILDING_MAP as $needle => $id) {
-        if (stripos($house_name, $needle) !== false) return $id;
+        if (stripos($house_name, $needle) !== false) {
+            // Commercial Madison/Manhattan/Soho живут в отдельном namespace
+            // (b=11/12/13), чтобы не сливаться с residential первым этажом.
+            // Physical floor 1 жилого ≠ physical floor 1 коммерции (это разные
+            // уровни здания, residential называется «1А», commercial — «1»).
+            // Здание 1/2/3 + Фитнес (id=4..7) — только в commercial-фиде,
+            // offset не нужен.
+            return ($is_commercial && $id <= 3) ? $id + 10 : $id;
+        }
     }
     return null;
 }
@@ -443,7 +451,7 @@ function process_offer(SimpleXMLElement $o, bool $is_commercial, array &$apartme
     if (!$is_commercial && (string) $o->property_type !== 'Апартаменты') {
         $counts['wrong_type']++; return;
     }
-    $b = building_id((string) $o->house->name);
+    $b = building_id((string) $o->house->name, $is_commercial);
     if ($b === null) { $counts['no_building']++; return; }
 
     $status = (string) $o->status;
@@ -873,6 +881,17 @@ foreach ($floors as $fk => &$fl) {
     $fl['floor_svg'] = isset($dynamic_floors[$fk])
         ? "/floor_raster/{$fk}.png"
         : '/floor/' . floor_svg_name($b, $f) . '.svg';
+
+    // Лейбл этажа для UI. Residential первый этаж Madison/Manhattan/Soho
+    // (b=1/2/3, f=1) — это «1А», чтобы отличаться от commercial первого
+    // этажа тех же корпусов (b=11/12/13, f=1, лейбл «1»). Для всех
+    // прочих f — просто номер. Фронт должен читать floors[fk].label
+    // вместо чистого f, иначе увидит просто число.
+    if ($f === 1 && $b >= 1 && $b <= 3) {
+        $fl['label'] = '1А';
+    } else {
+        $fl['label'] = (string)$f;
+    }
 }
 unset($fl);
 

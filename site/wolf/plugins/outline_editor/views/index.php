@@ -55,4 +55,4 @@
     window.OE_API_URL  = '/outline_editor/api';
     window.OE_DEBUG    = <?= isset($_GET['debug']) ? 'true' : 'false' ?>;
 </script>
-<script src="/wolf/plugins/outline_editor/outline_editor.js"></script>
+<script src="/wolf/plugins/outline_editor/outline_editor.js?v=2"></script>

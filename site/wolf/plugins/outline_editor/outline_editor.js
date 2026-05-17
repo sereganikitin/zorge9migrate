@@ -75,12 +75,22 @@
 
     function populateFloorSelect() {
         els.floorSelect.innerHTML = '';
-        var BLD = { 1: 'Madison', 2: 'Manhattan', 3: 'Soho' };
+        // b=1..3 — жилые корпуса Madison/Manhattan/Soho.
+        // b=4..7 — отдельные коммерческие здания/Фитнес (только commercial-фид).
+        // b=11..13 — коммерческие помещения в жилых корпусах Madison/Manhattan/Soho
+        //   (separate namespace, чтобы не сливаться с residential floor 1 → "1А").
+        var BLD = {
+            1: 'Madison',          2: 'Manhattan',          3: 'Soho',
+            4: 'Здание 1',         5: 'Здание 2',           6: 'Здание 3',
+            7: 'Фитнес',
+            11: 'Madison коммерция', 12: 'Manhattan коммерция', 13: 'Soho коммерция'
+        };
         state.floors.forEach(function (fl) {
             var opt = document.createElement('option');
             opt.value = floorKeyOf(fl);
             var bld = BLD[fl.b] || ('Корпус ' + fl.b);
-            opt.textContent = bld + ' — этаж ' + fl.f + ' (' + fl.aparts.length + ' квартир)';
+            var floorLbl = fl.label || String(fl.f);
+            opt.textContent = bld + ' — этаж ' + floorLbl + ' (' + fl.aparts.length + ' квартир)';
             els.floorSelect.appendChild(opt);
         });
     }
