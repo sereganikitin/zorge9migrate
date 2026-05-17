@@ -1,5 +1,11 @@
 <?php
-	$type = $this -> id() === '154' ? 'sale' : 'rent';
+    // Раньше тут был $this->id() === '154' — но ID страниц поменялись и
+    // теперь sale-страница имеет другой id, проверка всегда false → обе
+    // страницы рендерили type='rent', клик с /commercial-plans уводил
+    // в /commercial-rent.
+    // Делаем URL-based детект — надёжнее, не зависит от Wolf-page-id.
+    $uri = $_SERVER['REQUEST_URI'] ?? '';
+    $type = (strpos($uri, 'commercial-rent') !== false) ? 'rent' : 'sale';
 ?>
 
 <script>
