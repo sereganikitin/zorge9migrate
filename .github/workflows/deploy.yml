@@ -45,6 +45,8 @@ jobs:
             --exclude='*.bak' --exclude='*.bak-*' --exclude='*.padfix-bak' --exclude='*.padfix2-bak' \
             --exclude='*.embed-bak' --exclude='*.landings-bak' --exclude='.DS_Store' \
             --exclude='hydra/svg/map.json' --exclude='hydra/svg/outlines.json' --exclude='hydra/svg/floor_raster/' \
+            --exclude='hydra/svg/map_com.json' --exclude='hydra/svg/outlines_com.json' --exclude='hydra/svg/floor_com/' \
+            --exclude='hydra/json/com.json' --exclude='hydra/json/data.json' \
             -e "ssh -i ~/.ssh/deploy_key -o UserKnownHostsFile=~/.ssh/known_hosts" \
             site/ \
             ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PATH }}
