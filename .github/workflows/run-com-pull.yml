@@ -1,0 +1,59 @@
+name: Run com-pull.php manually
+
+# Триггер вручную из GitHub UI (Actions → Run workflow). Запускает
+# com-pull.php на сервере через SSH и печатает stdout/stderr в логи
+# воркфлоу. Использовать чтобы безопасно протестировать первый запуск
+# скрипта до того как добавлять его в cron.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/id
+          chmod 600 ~/.ssh/id
+          printf '%s\n' "${{ secrets.KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Backup current com.json (so we can revert if needed)
+        run: |
+          ssh -i ~/.ssh/id -o UserKnownHostsFile=~/.ssh/known_hosts \
+              ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+              'BAK=/var/www/old.zorge9.com/htdocs/hydra/json/com.json.bak-$(date -u +%Y%m%d-%H%M%S);
+               cp /var/www/old.zorge9.com/htdocs/hydra/json/com.json $BAK 2>&1;
+               echo "Backup saved: $BAK"'
+
+      - name: Run com-pull.php
+        run: |
+          ssh -i ~/.ssh/id -o UserKnownHostsFile=~/.ssh/known_hosts \
+              ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+              '/usr/bin/php /var/www/old.zorge9.com/htdocs/scripts/com-pull.php'
+
+      - name: Summary of com.json before/after
+        run: |
+          ssh -i ~/.ssh/id -o UserKnownHostsFile=~/.ssh/known_hosts \
+              ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+              'cd /var/www/old.zorge9.com/htdocs/hydra/json;
+               echo "=== Current com.json size + first apt ===";
+               ls -la com.json;
+               head -c 800 com.json;
+               echo;
+               echo;
+               echo "=== Backups available (for revert) ===";
+               ls -la com.json.bak-* 2>/dev/null | tail -5'
+
+      - name: Summary of mirrored rasters
+        run: |
+          ssh -i ~/.ssh/id -o UserKnownHostsFile=~/.ssh/known_hosts \
+              ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+              'cd /var/www/old.zorge9.com/htdocs/hydra/svg/floor_com 2>/dev/null;
+               echo "=== Rasters mirrored from feed ===";
+               ls -la *.png 2>/dev/null | head -30;
+               echo;
+               echo "=== _selection.svg files ===";
+               ls -la *_selection.svg 2>/dev/null | head -30'
