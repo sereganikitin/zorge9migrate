@@ -34,6 +34,10 @@ declare(strict_types=1);
 if (PHP_SAPI !== 'cli') { http_response_code(403); exit('CLI only'); }
 
 const PROFITBASE_URL    = 'https://pb7828.profitbase.ru/export/profitbase_xml/2d1c9a6fdf95ba53617e48f4ceef5556?scheme=https';
+// Отдельный фид для коммерческих помещений. Все offer-ы там коммерческие,
+// property_type не фильтруем. Из custom-field «Арендатор» берём имя для
+// SVG-лейбла поверх полигона на поэтажке (вместо area2svg-«Бронь»/«Продано»).
+const COMMERCIAL_PROFITBASE_URL = 'https://pb7828.profitbase.ru/export/profitbase_xml/68c4790c8c63f9160c0049f0b0bd939a?scheme=https';
 const OUT_FILE          = '/var/www/old.zorge9.com/htdocs/hydra/json/data.json';
 const TMP_FILE          = OUT_FILE . '.tmp';
 const MAP_FILE          = '/var/www/old.zorge9.com/htdocs/hydra/svg/map.json';
@@ -107,10 +111,20 @@ const STATUS_MAP = [
 const ST_AVAILABLE = 1;
 const ST_BOOKED    = 2;
 
+// Порядок важен: building_id() итерирует и берёт первый stripos-match.
+// "Здание 1" специфичнее чем "Madison" для дома "Коммерция. Здание 1",
+// но дома никогда не содержат оба needle одновременно — пересечений нет.
 const BUILDING_MAP = [
     'Madison'   => 1,
     'Manhattan' => 2,
     'Soho'      => 3,
+    // Коммерческие отдельностоящие здания (только в commercial-фиде).
+    // Если когда-нибудь появятся residential-офферы с этими именами —
+    // они тоже попадут сюда (это OK, BUILDING_MAP shared).
+    'Здание 1'  => 4,
+    'Здание 2'  => 5,
+    'Здание 3'  => 6,
+    'Фитнес'    => 7,
 ];
 
 function fail(string $msg): never {
@@ -180,6 +194,22 @@ function parse_apt_number(string $number): ?array {
     return [$tr_n, $n];
 }
 
+/**
+ * Парсер номера для коммерческих помещений. Форматы в фиде сильно гуляют:
+ * "К1П1", "К1П2-2", "К2_1А_01", "К2ФТ", "К2ОТ", "С6П1", "С7П1",
+ * "Здание 1", плоские "1"/"2"/"3" — общего паттерна нет. Поэтому
+ * используем crc32 от строки как стабильный uint-ключ. Уникальность
+ * требуется только в пределах (b, f); Profitbase сам не выдаёт
+ * одинаковый <number> двум разным помещениям одного дома+этажа.
+ */
+function parse_commercial_number(string $number): array {
+    $tr_n = trim($number);
+    // abs() чтобы int был положительным на 32-bit. На 64-bit PHP crc32
+    // и так помещается без знака, но abs() безопасен везде.
+    $n = abs(crc32($tr_n));
+    return [$tr_n, $n];
+}
+
 function building_id(string $house_name): ?int {
     foreach (BUILDING_MAP as $needle => $id) {
         if (stripos($house_name, $needle) !== false) return $id;
@@ -231,6 +261,32 @@ function polygon_to_path(array $polygon, float $w = 100.0, float $h = 100.0): st
 }
 
 /**
+ * Парсит floor-key "b-f" в [int b, int f]. Простой explode('-') ломается
+ * на отрицательном f ("1--1" для подвала → 3 части, "-1" теряется).
+ * Поэтому делим по ПЕРВОМУ дефису.
+ */
+function parse_floor_key(string $fk): array {
+    $dash = strpos($fk, '-');
+    if ($dash === false) return [(int)$fk, 0];
+    return [(int) substr($fk, 0, $dash), (int) substr($fk, $dash + 1)];
+}
+
+/**
+ * Среднее по вершинам полигона → координаты в пикселях viewBox.
+ * Используется для позиционирования tenant-лейбла в _selection.svg.
+ */
+function polygon_centroid_px(array $polygon, float $w, float $h): array {
+    $n = count($polygon);
+    if ($n === 0) return [0.0, 0.0];
+    $sx = 0.0; $sy = 0.0;
+    foreach ($polygon as $pt) {
+        $sx += (float)$pt[0] / 100.0 * $w;
+        $sy += (float)$pt[1] / 100.0 * $h;
+    }
+    return [round($sx / $n, 2), round($sy / $n, 2)];
+}
+
+/**
  * Генерирует _selection.svg для (b,f). Формат строго совместим с тем что
  * читает area2svg.js: <g id="SELECTION"> со списком <path>.
  *
@@ -247,16 +303,33 @@ function polygon_to_path(array $polygon, float $w = 100.0, float $h = 100.0): st
  * невидимую заглушку, если ни для одного варианта не нарисована.
  */
 function generate_selection_svg(int $b, int $f, array $apartments, array $outlines, array $apt_seq, int $w, int $h): string {
-    $seq_to_polygon = [];   // seq => polygon (only for active+drawn)
+    // Один проход — собираем всё что нужно для генерации path-ов и текста.
+    // Реальные полигоны помечаем class="oe-active" (+ oe-booked для st=2 или
+    // для commercial-non-AVAILABLE). Стили в /assets/css/floor_raster.css:
+    //   - oe-active дефолт: белая заливка 30% + белый контур
+    //   - oe-active :hover: золотая заливка + золотой контур
+    //   - oe-booked: pointer-events: none (некликабельный полигон)
+    // CSS вместо inline style — :hover нельзя прописать в inline.
+    $seq_to_polygon       = [];   // seq => polygon (только если есть обводка)
+    $seq_to_status        = [];   // seq => st
+    $seq_to_is_commercial = [];   // seq => bool
     $max_seq = 0;
     foreach ($apartments as $key => $a) {
         if ((int)$a['b'] !== $b || (int)$a['f'] !== $f) continue;
         $seq = $apt_seq[$key] ?? 0;
         if ($seq <= 0) continue;
         $max_seq = max($max_seq, $seq);
-        // Не-активные квартиры (st=0, UNAVAILABLE) — обводку не рисуем
-        // даже если админ её нарисовал. dummy за экраном.
-        if ((int)$a['st'] === 0) continue;
+
+        $st      = (int)$a['st'];
+        $is_comm = !empty($a['_is_commercial']);
+        $seq_to_status[$seq]        = $st;
+        $seq_to_is_commercial[$seq] = $is_comm;
+
+        // Скрываем полигон для residential UNAVAILABLE (st=0) — это «не
+        // показывать». Для commercial рисуем при ЛЮБОМ статусе: даже
+        // SOLD/UNAVAILABLE-помещения должны быть видны (с пометкой «занят
+        // арендатором» через oe-booked + tenant-label).
+        if (!$is_comm && $st === 0) continue;
         if (isset($outlines[$key]['polygon'])
             && is_array($outlines[$key]['polygon'])
             && count($outlines[$key]['polygon']) >= 3) {
@@ -265,30 +338,19 @@ function generate_selection_svg(int $b, int $f, array $apartments, array $outlin
     }
     if ($max_seq === 0) return '';
 
-    // Реальные полигоны помечаем class="oe-active" (+ oe-booked для st=2).
-    // Стили в /assets/css/floor_raster.css (подключается в plans.phtml):
-    //   - oe-active дефолт: белая заливка 30% + белый контур
-    //   - oe-active :hover: золотая заливка + золотой контур
-    //   - oe-booked: pointer-events: none (некликабельный полигон с
-    //     лейблом «Бронь» — текст ставится area2svg-ом для st=2)
-    // CSS вместо inline style — :hover нельзя прописать в inline.
-    // Чтобы знать какие seq → BOOKED, отдельно собираем status по seq:
-    $seq_to_status = [];
-    foreach ($apartments as $key => $a) {
-        if ((int)$a['b'] !== $b || (int)$a['f'] !== $f) continue;
-        $seq = $apt_seq[$key] ?? 0;
-        if ($seq > 0 && (int)$a['st'] !== 0) {
-            $seq_to_status[$seq] = (int)$a['st'];
-        }
-    }
-
     $paths_xml = '';
     for ($seq = $max_seq; $seq >= 1; $seq--) {  // descending
         $poly = $seq_to_polygon[$seq] ?? null;
         if ($poly !== null) {
             $d = polygon_to_path($poly, (float)$w, (float)$h);
             if ($d !== '') {
-                $cls = 'oe-active' . (($seq_to_status[$seq] ?? 0) === 2 ? ' oe-booked' : '');
+                $st      = $seq_to_status[$seq] ?? 0;
+                $is_comm = $seq_to_is_commercial[$seq] ?? false;
+                // oe-booked — некликабельный полигон. Используем для:
+                //   - residential BOOKED (st=2)
+                //   - commercial любого статуса кроме AVAILABLE
+                $non_clickable = ($st === 2) || ($is_comm && $st !== 1);
+                $cls = 'oe-active' . ($non_clickable ? ' oe-booked' : '');
                 $paths_xml .= '<path class="' . $cls . '" d="' . htmlspecialchars($d, ENT_QUOTES) . '"/>';
                 continue;
             }
@@ -297,8 +359,28 @@ function generate_selection_svg(int $b, int $f, array $apartments, array $outlin
         $paths_xml .= '<path fill="none" d="' . htmlspecialchars($dummy, ENT_QUOTES) . '"/>';
     }
 
+    // Tenant-лейблы для коммерции: <text> в центроиде полигона, поверх
+    // авто-надписи «Бронь» area2svg-а (та — div.apart_popup под top-svg,
+    // мы рисуем поверх в самом top-svg). Группа `oe-tenants` вынесена за
+    // пределы #SELECTION, чтобы не сбить area2svg-овский маппинг
+    // path-index → apt (он считает только path-ы внутри #SELECTION).
+    $labels_xml = '';
+    $fs = max(12, (int) round(min((float)$w, (float)$h) * 0.025));
+    foreach ($apartments as $key => $a) {
+        if ((int)$a['b'] !== $b || (int)$a['f'] !== $f) continue;
+        if (empty($a['tenant'])) continue;
+        $poly = $outlines[$key]['polygon'] ?? null;
+        if (!is_array($poly) || count($poly) < 3) continue;
+        [$cx, $cy] = polygon_centroid_px($poly, (float)$w, (float)$h);
+        $labels_xml .= '<text class="oe-tenant-label" x="' . $cx . '" y="' . $cy
+                     . '" text-anchor="middle" dominant-baseline="middle" font-size="' . $fs . '">'
+                     . htmlspecialchars((string)$a['tenant'], ENT_QUOTES) . '</text>';
+    }
+
     return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' . $w . ' ' . $h . '">'
-         . '<g id="SELECTION">' . $paths_xml . '</g></svg>';
+         . '<g id="SELECTION">' . $paths_xml . '</g>'
+         . ($labels_xml !== '' ? '<g class="oe-tenants">' . $labels_xml . '</g>' : '')
+         . '</svg>';
 }
 
 /** Скачивает раз; обновляет если URL изменился (в .url marker-файле). */
@@ -352,21 +434,25 @@ $apartments = [];
 // offer-ов (даже SOLD/EXECUTION). Profitbase для проданных этажей часто
 // сохраняет plan-floor URL, и мы можем использовать их как фон phantom-этажей.
 $floor_extras = [];
-$counts = ['wrong_type' => 0, 'no_building' => 0, 'no_status' => 0, 'sold' => 0, 'collision' => 0, 'malformed' => 0];
+$counts = ['wrong_type' => 0, 'no_building' => 0, 'no_status' => 0, 'sold' => 0, 'collision' => 0, 'malformed' => 0, 'commercial' => 0];
 
-foreach ($xml->offer as $o) {
-    if ((string) $o->property_type !== 'Апартаменты') {
-        $counts['wrong_type']++; continue;
+function process_offer(SimpleXMLElement $o, bool $is_commercial, array &$apartments, array &$counts, array &$floor_extras): void {
+    // Для жилого фида фильтруем по property_type. Коммерческий фид —
+    // отдельный URL где всё коммерческое, property_type там может быть
+    // любым ("Помещение", "Коммерция" и т.п.), не проверяем.
+    if (!$is_commercial && (string) $o->property_type !== 'Апартаменты') {
+        $counts['wrong_type']++; return;
     }
     $b = building_id((string) $o->house->name);
-    if ($b === null) { $counts['no_building']++; continue; }
+    if ($b === null) { $counts['no_building']++; return; }
 
     $status = (string) $o->status;
 
     // Извлекаем plan-floor для floor_extras ЛЮБОГО статуса (включая SOLD).
     // Используется ниже для phantom-этажей у которых нет AVAIL/BOOK/UNAV апт-ов.
+    // Floor может быть -1 (подвал, commercial), поэтому != 0, не > 0.
     $floor_for_extras = (int)$o->floor;
-    if ($floor_for_extras > 0 && !isset($floor_extras["$b-$floor_for_extras"])) {
+    if ($floor_for_extras !== 0 && !isset($floor_extras["$b-$floor_for_extras"])) {
         foreach ($o->image as $im) {
             if ((string)$im['type'] === 'plan floor') {
                 $url = trim((string)$im);
@@ -378,17 +464,31 @@ foreach ($xml->offer as $o) {
         }
     }
 
-    if (!isset(STATUS_MAP[$status])) {
-        $counts['sold']++; continue;
+    // Status mapping:
+    //   - residential: AVAILABLE/BOOKED/UNAVAILABLE → 1/2/0; SOLD/EXECUTION → skip
+    //   - commercial: то же, плюс SOLD → 0 (визуально как UNAVAILABLE).
+    //     Логика: 9 из 10 заполненных арендаторов в фиде — на SOLD-офферах
+    //     (помещение продано, у нового собственника есть арендатор).
+    //     Без этого исключения tenant-лейблы почти ни у кого не появятся.
+    //     EXECUTION (в исполнении) для commercial тоже скипаем — transient state.
+    if (isset(STATUS_MAP[$status])) {
+        $st = STATUS_MAP[$status];
+    } elseif ($is_commercial && $status === 'SOLD') {
+        $st = 0;
+    } else {
+        $counts['sold']++; return;
     }
-    $st = STATUS_MAP[$status];
 
-    $parsed = parse_apt_number((string) $o->number);
-    if ($parsed === null) {
-        $counts['malformed']++;
-        continue;
+    if ($is_commercial) {
+        [$tr_n, $n] = parse_commercial_number((string) $o->number);
+    } else {
+        $parsed = parse_apt_number((string) $o->number);
+        if ($parsed === null) {
+            $counts['malformed']++;
+            return;
+        }
+        [$tr_n, $n] = $parsed;
     }
-    [$tr_n, $n] = $parsed;
     $f  = (int) $o->floor;
     $pos_on_floor = (int) ($o->{'position-on-floor'} ?? 0);
     $rc = (int) $o->rooms;
@@ -429,6 +529,9 @@ foreach ($xml->offer as $o) {
     $promo         = cf($o, 'Акция');                  // тоже акция
     $ter_raw       = cf($o, 'Терраса');
     $ter           = is_numeric($ter_raw) ? (float) $ter_raw : ($ter_raw !== '' && $ter_raw !== 'Нет' ? 1 : 0);
+    // tenant: только для коммерческого фида. Рисуется как <text> в _selection.svg
+    // (см. generate_selection_svg), вместо area2svg-«Бронь»/«Продано».
+    $tenant        = $is_commercial ? cf($o, 'Арендатор') : '';
 
     // window photos: "url1; url2; url3" → ["url1", "url2", "url3"]
     $wg_raw = cf($o, 'Фото из окон');
@@ -455,6 +558,8 @@ foreach ($xml->offer as $o) {
         $counts['collision']++;
         fwrite(STDERR, "[feed-pull] WARN: key collision $key (tr_n={$apartments[$key]['tr_n']} vs $tr_n)\n");
     }
+
+    if ($is_commercial) $counts['commercial']++;
 
     $apartments[$key] = [
         'b'              => $b,
@@ -487,6 +592,7 @@ foreach ($xml->offer as $o) {
         'profit'         => $profit !== '' ? $profit : $promo,
         'ter'            => $ter,
         'wg'             => $wg,
+        'tenant'         => $tenant,
 
         // разбивка площадей по комнатам — оставляем дефолтами (см. doc-комментарий
         // в шапке файла). Если когда-нибудь появится layout-DB или они придут
@@ -508,7 +614,43 @@ foreach ($xml->offer as $o) {
         '_built_year'    => $built_year,
         '_ready_quarter' => $ready_quarter,
         '_pos_on_floor'  => $pos_on_floor,  // нужно для генерации map.json (см. ниже), потом стираем
+        '_is_commercial' => $is_commercial, // потом стираем; нужен только для пропуска коммерции в счётчиках buildings/floors
     ];
+}
+
+foreach ($xml->offer as $o) {
+    process_offer($o, false, $apartments, $counts, $floor_extras);
+}
+
+// Коммерческий фид — отдельный URL, в нём все offer-ы коммерческие.
+// Парсим теми же правилами; tenant подтянется в process_offer. Падение этого
+// фида не фатально (residential уже распарсен) — логируем и идём дальше.
+// fetch_xml() делает exit(1) при curl-ошибке, поэтому curl делаем инлайн.
+$commercial_xml_str = null;
+$_ch = curl_init(COMMERCIAL_PROFITBASE_URL);
+curl_setopt_array($_ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_TIMEOUT        => HTTP_TIMEOUT,
+    CURLOPT_FAILONERROR    => true,
+    CURLOPT_FOLLOWLOCATION => true,
+]);
+$_body = curl_exec($_ch);
+if ($_body === false) {
+    fwrite(STDERR, "[feed-pull] WARN: commercial fetch failed: " . curl_error($_ch) . "\n");
+} else {
+    $commercial_xml_str = $_body;
+}
+curl_close($_ch);
+
+if ($commercial_xml_str !== null && strlen($commercial_xml_str) >= 100) {
+    $commercial_xml = @simplexml_load_string($commercial_xml_str);
+    if ($commercial_xml === false) {
+        fwrite(STDERR, "[feed-pull] WARN: commercial xml parse failed, skipping\n");
+    } else {
+        foreach ($commercial_xml->offer as $o) {
+            process_offer($o, true, $apartments, $counts, $floor_extras);
+        }
+    }
 }
 
 // --- агрегаты buildings и floors ----------------------------------
@@ -548,6 +690,12 @@ foreach ($apartments as $a) {
     } elseif ($floors[$fk]['floor_img'] === '' && $a['floor_img'] !== '') {
         $floors[$fk]['floor_img'] = $a['floor_img'];
     }
+
+    // Коммерческие помещения не влияют на счётчики «X апартаментов от Y до Z млн»
+    // (buildings.at/arc/tc/sq, floors.at/arc/tc/sq) — у них своя страница, своя
+    // логика отображения (tenant-лейбл вместо цены/брони). Но в $apartments
+    // они остаются — для генерации полигонов в _selection.svg и map.json.
+    if (!empty($a['_is_commercial'])) continue;
 
     // Считаем «активные лоты» = AVAILABLE + BOOKED. Бронь — это ещё не
     // проданная квартира (потенциально может вернуться в продажу), поэтому
@@ -689,7 +837,7 @@ if (!empty($dynamic_floors)) {
         fail('cannot create ' . FLOOR_RASTER_DIR);
     }
     foreach ($dynamic_floors as $fk => $_) {
-        [$b, $f] = array_map('intval', explode('-', $fk));
+        [$b, $f] = parse_floor_key($fk);
         $raster_path = FLOOR_RASTER_DIR . "/{$fk}.png";
 
         // Растр должен быть на месте до генерации _selection.svg — нужно
@@ -721,7 +869,7 @@ if (!empty($dynamic_floors)) {
 // раньше брал это из map.json[apt_key].floor (нужен был апт чтобы получить
 // путь). Теперь — независимо от апт-ов, можно отдавать пустые этажи.
 foreach ($floors as $fk => &$fl) {
-    [$b, $f] = array_map('intval', explode('-', $fk));
+    [$b, $f] = parse_floor_key($fk);
     $fl['floor_svg'] = isset($dynamic_floors[$fk])
         ? "/floor_raster/{$fk}.png"
         : '/floor/' . floor_svg_name($b, $f) . '.svg';
@@ -763,7 +911,7 @@ if (!rename(MAP_TMP_FILE, MAP_FILE)) fail('rename map failed');
 
 // убираем временные поля
 foreach ($apartments as $k => &$a) {
-    unset($a['_built_year'], $a['_ready_quarter'], $a['_pos_on_floor']);
+    unset($a['_built_year'], $a['_ready_quarter'], $a['_pos_on_floor'], $a['_is_commercial']);
 }
 unset($a);
 
@@ -781,8 +929,10 @@ if (!rename(TMP_FILE, OUT_FILE)) fail('atomic rename failed');
 
 $elapsed = round(microtime(true) - $started, 2);
 $total = count($apartments);
+$commercial_n = (int) $counts['commercial'];
+$residential_n = $total - $commercial_n;
 $dyn_n = count($dynamic_floors);
-fwrite(STDOUT, "[feed-pull] " . date('c') . " ok: $total apartments, "
+fwrite(STDOUT, "[feed-pull] " . date('c') . " ok: $residential_n apartments + $commercial_n commercial, "
     . "skipped: sold/exec=" . $counts['sold']
     . " not-apt=" . $counts['wrong_type']
     . " no-bldg=" . $counts['no_building']

@@ -54,3 +54,18 @@
 .plan_frame_content_centrer .apart_popup .value span {
     font-size: 1.1rem !important;
 }
+
+/* Лейбл арендатора (коммерция) — <text> внутри _selection.svg, рисуется
+ * поверх area2svg-«Бронь»/«Продано». area2svg-попап — div.apart_popup
+ * лежит между raster и top-svg; наш <text> сидит в самом top-svg
+ * (естественно выше по z-order). Stroke даёт читаемость на любом фоне
+ * (белая обводка полигона / золотая на hover / растровый фон). */
+.plan_frame_content_centrer text.oe-tenant-label {
+    fill: #fff !important;
+    font-weight: 700 !important;
+    paint-order: stroke !important;
+    stroke: rgba(0, 0, 0, 0.8) !important;
+    stroke-width: 4 !important;
+    stroke-linejoin: round !important;
+    pointer-events: none !important;
+}

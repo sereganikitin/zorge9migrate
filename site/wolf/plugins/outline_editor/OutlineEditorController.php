@@ -119,7 +119,8 @@ class OutlineEditorController extends PluginController {
 
         $clean = [];
         foreach ($payload['outlines'] as $key => $o) {
-            if (!is_string($key) || !preg_match('/^\d+-\d+-\d+$/', $key)) continue;
+            // b-f-n; для коммерции f может быть -1 (подвал), n — crc32 hash.
+            if (!is_string($key) || !preg_match('/^\d+--?\d+-\d+$/', $key)) continue;
             if (!isset($o['polygon']) || !is_array($o['polygon']) || count($o['polygon']) < 3) continue;
             $poly = [];
             foreach ($o['polygon'] as $pt) {
