@@ -211,6 +211,49 @@
 </div>
 
 <style>
+/* === Полигоны (oe-active) для растровой коммерческой поэтажки ===
+ *
+ * com-pull.php эмитит <path class="oe-active"> в _selection.svg для apt-ов
+ * с реальным полигоном (из outlines_com.json — рисуются админом через
+ * расширенный outline_editor). area2svg-плагин копирует path в bottom-svg
+ * И top-svg; bottom лежит ПОД растровым background-image, top — НАД ним.
+ *
+ * Чтобы полигон был ВИДЕН ПОВЕРХ растра — нужно сделать top-path видимым.
+ * area2svg ставит на top opacity:0, plus commercial-plans.js дополнительно
+ * ставит fill-opacity:0, stroke-opacity:0. Всё перебиваем через !important.
+ * Палитра золотая (rgb(172,150,109) бренд), как на residential — см.
+ * /assets/css/floor_raster.css. */
+.plan_frame.n0 .plan_frame_content path.oe-active {
+    fill: rgba(255, 255, 255, 0.15) !important;
+    fill-opacity: 1 !important;
+    stroke: rgb(172, 150, 109) !important;
+    stroke-opacity: 1 !important;
+    stroke-width: 2.5 !important;
+    stroke-linejoin: round !important;
+    opacity: 1 !important;
+    cursor: pointer;
+    transition: fill 150ms ease, stroke 150ms ease, stroke-width 150ms ease;
+    pointer-events: auto;
+}
+.plan_frame.n0 .plan_frame_content path.oe-active:hover {
+    fill: rgba(172, 150, 109, 0.55) !important;
+    stroke: rgb(255, 215, 100) !important;
+    stroke-width: 3.5 !important;
+}
+
+/* Tenant <text> рендерится в _selection.svg на TOP-слое — естественно
+ * лежит над растром. Белый fill с тёмным stroke для читаемости. */
+.plan_frame.n0 .plan_frame_content text.oe-tenant-label {
+    fill: #fff !important;
+    font-weight: 700 !important;
+    paint-order: stroke !important;
+    stroke: rgba(0, 0, 0, 0.8) !important;
+    stroke-width: 4 !important;
+    stroke-linejoin: round !important;
+    pointer-events: none !important;
+}
+
+/* === Tenant-плашка (MVP JS-overlay для старой вёрстки vs popup) === */
 /* Лейбл арендатора для коммерческих помещений с заполненным полем
  * `tenant` в com.json. Заменяет дефолтный «Бронь»/«Продано» в popup-е,
  * который рисует area2svg-плагин. Сделано тут (а не в style.css-бандле)

@@ -289,11 +289,16 @@ function generate_com_selection_svg(int $b, int $s, int $f, array $apts_on_floor
         if (is_array($poly) && count($poly) >= 3) {
             $d = polygon_to_path($poly, (float)$w, (float)$h);
             if ($d !== '') {
+                // class="oe-active" — CSS в commercial-plans.phtml подхватит
+                // и нарисует золотой контур на TOP-слое (площадка над растром).
+                // Без класса полигон останется в BOTTOM-слое (под растром) и
+                // будет невидим.
                 $paths_xml .= '<path class="oe-active" d="' . htmlspecialchars($d, ENT_QUOTES) . '"/>';
                 continue;
             }
         }
-        // Dummy — невидимый, далеко за viewBox
+        // Dummy — невидимый, далеко за viewBox. Класс НЕ ставим, чтобы
+        // CSS .oe-active не делал его «видимой» рамкой за пределами viewBox.
         $dummy = 'M-100000 -100000 L-100000 -99999 L-99999 -100000 Z';
         $paths_xml .= '<path fill="none" d="' . htmlspecialchars($dummy, ENT_QUOTES) . '"/>';
     }
