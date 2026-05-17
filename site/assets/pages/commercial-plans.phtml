@@ -215,29 +215,34 @@
  * `tenant` в com.json. Заменяет дефолтный «Бронь»/«Продано» в popup-е,
  * который рисует area2svg-плагин. Сделано тут (а не в style.css-бандле)
  * чтобы быть локальной правкой страницы без затрагивания общих стилей. */
+/* Центрируем ВЕСЬ popup на координате полигона. Раньше transform висел
+ * на внутреннем .letter — это давало небольшой left-сдвиг из-за того
+ * как браузер считает inline-block-ширину при transform-е. С transform
+ * на родителе .flat_popup_item плашка симметрично центрируется на
+ * top/left coordinates (которые = centroid полигона). :has() поддерживается
+ * всеми браузерами 2023+. */
+.flat_popup_item:has(.letter.has-tenant) {
+    transform: translate(-50%, -50%);
+}
+
 .flat_popup_item .letter.has-tenant {
     background: rgba(20, 20, 20, 0.82);
     color: #fff;
-    padding: 0.2em 0.45em;
+    padding: 0.25em 0.55em;
     border-radius: 3px;
-    /* Меньший шрифт + перенос длинных имён. Подбирали так, чтобы влезали в
-     * типичные коммерческие полигоны (50-150 м²) и не уезжали за рамки.
-     * `--ind` — CSS-переменная сайта, контролирует относительный размер
-     * в зависимости от viewport-а; fallback 1em для случаев когда её нет. */
-    font-size: calc(var(--ind, 0.8em) * 1.05);
+    /* Перенос длинных имён + размер, привязанный к --ind (CSS-переменная
+     * сайта, масштабируется с viewport). 1.3 чуть крупнее старого 1.05 —
+     * читается лучше, но всё ещё помещается в типичные полигоны. */
+    font-size: calc(var(--ind, 0.85em) * 1.3);
     font-weight: 600;
-    line-height: 1.15;
+    line-height: 1.2;
     white-space: normal;
     word-break: break-word;
     overflow-wrap: anywhere;
-    max-width: 7em;
+    max-width: 8em;
     text-align: center;
     display: inline-block;
     box-shadow: 0 1px 3px rgba(0,0,0,0.45);
-    /* Центруем плашку на координате полигона (popup top/left = центроид).
-     * Иначе top-left угла плашки сидит на центроиде и длинные имена
-     * расползаются вправо за пределы помещения. */
-    transform: translate(-50%, -50%);
 }
 </style>
 
@@ -336,14 +341,15 @@
         log('summary: paths=' + pathCount + ' withTenant=' + withTenant + ' matched=' + matched);
     }
 
-    // Polling fallback — на случай если MutationObserver почему-то не сработает
-    // (pjax-навигация без полной перезагрузки, бандл lazy-инициализирует
-    // что-то после долгой задержки, и т.д.). 3 секунды × каждые 500мс.
-    var pollCount = 0;
+    // Бесконечный polling. Pjax при навигации между корпусами заменяет
+    // содержимое .plan_frame.n0 — MutationObserver, привязанный к старому
+    // (теперь detached) узлу, не сработает на новых popup-ах. Polling
+    // покрывает любые такие случаи: каждые 1.5 сек пробуем применить;
+    // applyTenants идемпотентен (data-tenant-applied флаг — не трогаем
+    // уже размеченные popup-ы). Стоимость пренебрежимая.
     function poll() {
-        pollCount++;
         applyTenants();
-        if (pollCount < 20) setTimeout(poll, 500);
+        setTimeout(poll, 1500);
     }
 
     var debounceTimer = null;
