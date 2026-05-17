@@ -239,9 +239,11 @@
     pointer-events: auto;
 }
 .plan_frame.n0 .plan_frame_content path:not([fill="none"]):hover {
-    /* Hover: ярко-жёлтый fill + светло-золотой stroke = заметная смена. */
-    fill: rgba(255, 215, 100, 0.55) !important;
-    stroke: rgb(255, 240, 150) !important;
+    /* Hover: тот же золотой (бренд) но насыщеннее — заливка 0.6 вместо 0.28,
+     * stroke слегка осветлён для тонкого акцента. Цвет остаётся в семействе
+     * mustard-gold, без яркой желтизны. */
+    fill: rgba(172, 150, 109, 0.6) !important;
+    stroke: rgb(232, 195, 95) !important;
     stroke-width: 4 !important;
 }
 
