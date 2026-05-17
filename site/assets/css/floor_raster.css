@@ -6,34 +6,43 @@
  * (AVAILABLE/BOOKED) с нарисованной обводкой. Для не-активных и
  * не-нарисованных идут dummy за экраном без класса.
  *
- * Дефолт: белая заливка 50%, белый контур.
- * Hover:  золотая заливка, золотой контур.
+ * Дефолт: золотой контур (брендовый rgb(172,150,109)) + лёгкая белая заливка.
+ *   — золото даёт контраст и против белого растра, и между соседними
+ *     полигонами (раньше контур был белый — сливался с растр-фоном).
+ * Hover:  более яркое золото + насыщенная золотая заливка.
+ * BOOKED: золотая заливка (помещение явно «занято») + золотой контур.
  */
 
 .plan_frame_content_centrer path.oe-active {
-    fill: rgba(255, 255, 255, 0.3) !important;
-    stroke: rgb(255, 255, 255) !important;
-    stroke-width: 2 !important;
+    fill: rgba(255, 255, 255, 0.15) !important;
+    stroke: rgb(172, 150, 109) !important;
+    stroke-width: 2.5 !important;
     stroke-linejoin: round !important;
     opacity: 1 !important;
     cursor: pointer;
-    transition: fill 150ms ease, stroke 150ms ease;
+    transition: fill 150ms ease, stroke 150ms ease, stroke-width 150ms ease;
 }
 
 .plan_frame_content_centrer path.oe-active:hover {
-    fill: rgba(172, 150, 109, 0.45) !important;
-    stroke: rgb(172, 150, 109) !important;
+    fill: rgba(172, 150, 109, 0.55) !important;
+    stroke: rgb(255, 215, 100) !important;
+    stroke-width: 3.5 !important;
 }
 
-/* BOOKED-полигоны: видимая обводка (как у AVAILABLE), но без клика
- * и без hover-эффекта. Лейбл «Бронь» area2svg сам ставит для st=2. */
+/* BOOKED-полигоны: видны как «занятые» (золотая заливка), некликабельные.
+ * Лейбл «Бронь» area2svg сам ставит для st=2; для commercial поверх ещё
+ * рисуется text.oe-tenant-label с именем арендатора. */
 .plan_frame_content_centrer path.oe-booked {
+    fill: rgba(172, 150, 109, 0.4) !important;
+    stroke: rgb(172, 150, 109) !important;
+    stroke-width: 2.5 !important;
     pointer-events: none !important;
     cursor: default !important;
 }
 .plan_frame_content_centrer path.oe-booked:hover {
-    fill: rgba(255, 255, 255, 0.3) !important;
-    stroke: rgb(255, 255, 255) !important;
+    fill: rgba(172, 150, 109, 0.4) !important;
+    stroke: rgb(172, 150, 109) !important;
+    stroke-width: 2.5 !important;
 }
 
 /* Подпись площади: всегда чёрная, мельче дефолтной (calc(var(--ind) * 2.7)),
