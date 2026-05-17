@@ -264,6 +264,10 @@
  * от того как существующий CSS позиционирует панель для flat-state.
  * pointer-events:none — иначе плашка перехватывает мышь и hover-out
  * стримгерится постоянно. */
+/* Только force-visible. position/left/top/transform НЕ трогаем — пусть
+ * родной CSS бандла позиционирует панель (учитывает меню слева).
+ * Эта позиция как раз и мелькает на мгновение при mouseout (когда
+ * наш класс снимается и панель fade-out-ит в своём естественном месте). */
 .v-frame .floor_frame .apart_details_frame.com-hover-shown,
 .v-frame .apart_details_frame.com-hover-shown,
 .apart_details_frame.com-hover-shown {
@@ -271,15 +275,7 @@
     opacity: 1 !important;
     visibility: visible !important;
     pointer-events: none !important;
-    position: fixed !important;
-    left: 50% !important;
-    right: auto !important;
-    top: auto !important;
-    bottom: 2em !important;
-    transform: translateX(-50%) !important;
     z-index: 100 !important;
-    max-width: 90vw !important;
-    width: auto !important;
 }
 
 /* Tenant <text> рендерится в _selection.svg на TOP-слое — естественно
