@@ -224,11 +224,14 @@
  * от старого vector-pipeline идут без класса — те бы оставались за растром.
  * Палитра золотая (rgb(172,150,109)) как на residential floor_raster.css. */
 .plan_frame.n0 .plan_frame_content path:not([fill="none"]) {
-    fill: rgba(255, 255, 255, 0.15) !important;
+    /* Более насыщенная золотая заливка чтобы не сливаться с растром.
+     * stroke яркий мустард-gold (rgb(212,175,80)) контрастирует с любым
+     * фоном (белый/серый растр поэтажки). */
+    fill: rgba(172, 150, 109, 0.28) !important;
     fill-opacity: 1 !important;
-    stroke: rgb(172, 150, 109) !important;
+    stroke: rgb(212, 175, 80) !important;
     stroke-opacity: 1 !important;
-    stroke-width: 2.5 !important;
+    stroke-width: 3 !important;
     stroke-linejoin: round !important;
     opacity: 1 !important;
     cursor: pointer;
@@ -236,9 +239,10 @@
     pointer-events: auto;
 }
 .plan_frame.n0 .plan_frame_content path:not([fill="none"]):hover {
-    fill: rgba(172, 150, 109, 0.55) !important;
-    stroke: rgb(255, 215, 100) !important;
-    stroke-width: 3.5 !important;
+    /* Hover: ярко-жёлтый fill + светло-золотой stroke = заметная смена. */
+    fill: rgba(255, 215, 100, 0.55) !important;
+    stroke: rgb(255, 240, 150) !important;
+    stroke-width: 4 !important;
 }
 
 /* Полигоны и popup-ы для НЕдоступных apt-ов (status ∉ {1, 2}). Класс
@@ -366,47 +370,63 @@
         }
 
         var typeSt = statusField();
-        var withTenant = 0, matched = 0, already = 0, hidden = 0, shown = 0;
+        var withTenant = 0, matched = 0, already = 0, polyHidden = 0, polyShown = 0;
         for (var i = 0; i < paths.length; i++) {
             var path = paths[i];
             var alt = path.alt;
             var apt = apts[alt];
 
-            // Видимость: показываем только AVAILABLE (1) и BOOKED (2) на
-            // соответствующем type. SOLD/UNAVAILABLE/Сдан/Закрыт — скрываем.
+            // Status: AVAILABLE (1) или BOOKED (2) = «active», полигон видим.
+            // Tenant: если заполнен, popup-плашка с именем показывается
+            // даже когда полигон скрыт (для проданных/сданных с арендатором).
             var status = apt ? Number(apt[typeSt]) : 0;
             var isActive = (status === 1 || status === 2);
+            var hasTenant = !!(apt && apt.tenant);
 
-            // Hide path на обоих слоях (top + bottom) + popup на том же index
             var topNode = path.node;
             var bottomNode = path.bottom && path.bottom.node;
             var p = popups[i];
+
+            // Полигон: показываем ТОЛЬКО для active
             if (isActive) {
                 if (topNode) topNode.classList.remove('com-hidden');
                 if (bottomNode) bottomNode.classList.remove('com-hidden');
-                if (p) p.classList.remove('com-hidden');
-                shown++;
+                polyShown++;
             } else {
                 if (topNode) topNode.classList.add('com-hidden');
                 if (bottomNode) bottomNode.classList.add('com-hidden');
-                if (p) p.classList.add('com-hidden');
-                hidden++;
-                continue;  // не пытаемся ставить tenant на скрытый
+                polyHidden++;
             }
 
-            if (!apt || !apt.tenant) continue;
-            withTenant++;
-            if (p.dataset.tenantApplied === '1') { already++; continue; }
-            var letter = p.querySelector('.letter');
-            if (letter) {
-                letter.textContent = apt.tenant;
-                letter.classList.add('has-tenant');
-                p.dataset.tenantApplied = '1';
-                matched++;
+            // Popup-плашка: показываем для active ИЛИ если есть tenant.
+            // На rest (inactive + no tenant) — скрываем (это «Продано»/«Сдан»
+            // без полезной инфы, юзер просил их не выводить).
+            if (p) {
+                if (isActive || hasTenant) {
+                    p.classList.remove('com-hidden');
+                } else {
+                    p.classList.add('com-hidden');
+                }
+            }
+
+            // Tenant-текст: ставим в popup если есть tenant И popup-будет видим
+            if (hasTenant && p) {
+                withTenant++;
+                if (p.dataset.tenantApplied === '1') {
+                    already++;
+                } else {
+                    var letter = p.querySelector('.letter');
+                    if (letter) {
+                        letter.textContent = apt.tenant;
+                        letter.classList.add('has-tenant');
+                        p.dataset.tenantApplied = '1';
+                        matched++;
+                    }
+                }
             }
         }
         log('summary: paths=' + paths.length + ' popups=' + popups.length
-            + ' shown=' + shown + ' hidden=' + hidden
+            + ' polyShown=' + polyShown + ' polyHidden=' + polyHidden
             + ' withTenant=' + withTenant + ' matched=' + matched + ' already=' + already);
     }
 
