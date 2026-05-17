@@ -103,9 +103,17 @@ function fetch_xml(string $url): string {
     return $body;
 }
 
-/** Скачивает раз; обновляет если URL изменился (в .url marker-файле). */
+/**
+ * Скачивает раз; обновляет если URL изменился (в .url marker-файле).
+ *
+ * Если скачивание упало (timeout / 429 / Profitbase URL сменился и новый
+ * не доступен), но локальный файл уже есть от прошлого run-а — возвращаем
+ * true (используем stale-но-работающий PNG). Без этого fallback-а map_com.json
+ * регрессирует на векторные .svg-пути для всех floor-ов где хоть один
+ * download failed, и пользователь видит «растры пропали».
+ */
 function mirror_raster(string $url, string $local_path): bool {
-    if ($url === '') return false;
+    if ($url === '') return file_exists($local_path);
     $marker = $local_path . '.url';
     $cached = @file_get_contents($marker);
     if (file_exists($local_path) && $cached === $url) return true;
@@ -119,14 +127,18 @@ function mirror_raster(string $url, string $local_path): bool {
     ]);
     $bytes = curl_exec($ch);
     if ($bytes === false) {
-        fwrite(STDERR, "[com-pull] WARN: failed to mirror $url: " . curl_error($ch) . "\n");
-        curl_close($ch); return false;
+        $err = curl_error($ch);
+        curl_close($ch);
+        fwrite(STDERR, "[com-pull] WARN: failed to mirror $url: $err\n");
+        // Fallback: если файл уже есть на диске от прошлого run-а — используем
+        // его. Лучше stale-PNG чем регрессия на .svg в map_com.json.
+        return file_exists($local_path);
     }
     curl_close($ch);
 
     $tmp = $local_path . '.tmp';
-    if (file_put_contents($tmp, $bytes) === false) return false;
-    if (!rename($tmp, $local_path)) { @unlink($tmp); return false; }
+    if (file_put_contents($tmp, $bytes) === false) return file_exists($local_path);
+    if (!rename($tmp, $local_path)) { @unlink($tmp); return file_exists($local_path); }
     @file_put_contents($marker, $url);
     return true;
 }
