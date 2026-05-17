@@ -216,17 +216,28 @@
  * который рисует area2svg-плагин. Сделано тут (а не в style.css-бандле)
  * чтобы быть локальной правкой страницы без затрагивания общих стилей. */
 .flat_popup_item .letter.has-tenant {
-    background: rgba(20, 20, 20, 0.78);
+    background: rgba(20, 20, 20, 0.82);
     color: #fff;
-    padding: 0.25em 0.6em;
-    border-radius: 4px;
-    font-size: 0.9em;
+    padding: 0.2em 0.45em;
+    border-radius: 3px;
+    /* Меньший шрифт + перенос длинных имён. Подбирали так, чтобы влезали в
+     * типичные коммерческие полигоны (50-150 м²) и не уезжали за рамки.
+     * `--ind` — CSS-переменная сайта, контролирует относительный размер
+     * в зависимости от viewport-а; fallback 1em для случаев когда её нет. */
+    font-size: calc(var(--ind, 0.8em) * 1.05);
     font-weight: 600;
-    white-space: nowrap;
-    max-width: 12em;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    line-height: 1.15;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    max-width: 7em;
+    text-align: center;
+    display: inline-block;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.45);
+    /* Центруем плашку на координате полигона (popup top/left = центроид).
+     * Иначе top-left угла плашки сидит на центроиде и длинные имена
+     * расползаются вправо за пределы помещения. */
+    transform: translate(-50%, -50%);
 }
 </style>
 
@@ -247,7 +258,7 @@
     if (window.__zorgeCommercialTenantOverlay) return;
     window.__zorgeCommercialTenantOverlay = true;
 
-    var DBG = true;  // временно для дебага; убрать когда заработает
+    var DBG = false;  // включи в true чтобы видеть диагностику в консоли
     function log() {
         if (!DBG) return;
         try { console.log.apply(console, ['[tenant-overlay]'].concat([].slice.call(arguments))); } catch(_){}
