@@ -1,0 +1,112 @@
+name: Discover untracked server files
+
+# One-shot workflow для подтягивания файлов, которые лежат на сервере, но
+# не трекаются в репо (шаблоны commercial-plans, скрипты com-pull, Vue-JS
+# в assets/, area2svg.js). Запускается вручную (Actions → Run workflow).
+# Результат: новая ветка `discover/<timestamp>` с папкой _server_dump/.
+# Просмотри её, перенеси нужное в `site/...` соответствующего пути и слей.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/id
+          chmod 600 ~/.ssh/id
+          printf '%s\n' "${{ secrets.KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Sanity ping
+        run: |
+          ssh -i ~/.ssh/id -o UserKnownHostsFile=~/.ssh/known_hosts \
+              ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+              "echo connected as \$(whoami); pwd; ls -la ${{ secrets.DEPLOY_PATH }} | head -20"
+
+      - name: Pull templates + scripts + non-promo JS into _server_dump/
+        run: |
+          SSH_CMD='ssh -i ~/.ssh/id -o UserKnownHostsFile=~/.ssh/known_hosts'
+          REMOTE="${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}"
+          BASE="${{ secrets.DEPLOY_PATH }}"
+
+          mkdir -p _server_dump
+
+          # 1) Все *.phtml из assets/pages и assets/m/pages
+          rsync -avz \
+            --include='*/' \
+            --include='*.phtml' \
+            --include='*.php' \
+            --exclude='*' \
+            -e "$SSH_CMD" \
+            "$REMOTE:$BASE/assets/" _server_dump/assets/ || true
+
+          # 2) Всё содержимое scripts/ (там, скорее всего, лежит com-генератор)
+          rsync -avz \
+            --include='*/' \
+            --include='*.php' \
+            --include='*.sh' \
+            --exclude='*' \
+            -e "$SSH_CMD" \
+            "$REMOTE:$BASE/scripts/" _server_dump/scripts/ || true
+
+          # 3) Vue-JS и любые .js из assets/ (НЕ из promo/ — там жирный legacy)
+          rsync -avz \
+            --include='*/' \
+            --include='*.js' \
+            --exclude='promo/' \
+            --exclude='*' \
+            -e "$SSH_CMD" \
+            "$REMOTE:$BASE/assets/" _server_dump/assets/ || true
+
+          # 4) Wolf-плагины (там может лежать админ-логика для com.json)
+          rsync -avz \
+            --include='*/' \
+            --include='*.php' \
+            --include='*.js' \
+            --include='*.css' \
+            --include='*.phtml' \
+            --exclude='*' \
+            -e "$SSH_CMD" \
+            "$REMOTE:$BASE/wolf/plugins/" _server_dump/wolf/plugins/ || true
+
+          # 5) Cron-config (читаем напрямую, может потребовать sudo)
+          $SSH_CMD $REMOTE 'cat /etc/cron.d/zorge9-unloading 2>/dev/null || sudo cat /etc/cron.d/zorge9-unloading 2>/dev/null || echo "(no read access to /etc/cron.d/zorge9-unloading)"' > _server_dump/cron.txt || true
+
+          # 6) crontab текущего пользователя
+          $SSH_CMD $REMOTE 'crontab -l 2>/dev/null || echo "(no user crontab)"' > _server_dump/user-crontab.txt || true
+
+      - name: Report what was pulled
+        run: |
+          echo "=== Tree ==="
+          find _server_dump -type f | sort
+          echo
+          echo "=== Sizes ==="
+          du -sh _server_dump/*
+          echo
+          echo "=== Total ==="
+          du -sh _server_dump
+
+      - name: Commit to discovery branch
+        run: |
+          git config user.name "discover-bot"
+          git config user.email "discover@users.noreply.github.com"
+          BR="discover/$(date -u +%Y%m%d-%H%M%S)"
+          git checkout -b $BR
+          git add _server_dump/
+          if git diff --staged --quiet; then
+            echo "::warning::Nothing was pulled — check rsync errors above"
+            exit 0
+          fi
+          git commit -m "discover: dump untracked server files for inspection"
+          git push origin $BR
+          echo "::notice::Pulled files into branch $BR"
+          echo "Review: https://github.com/${{ github.repository }}/tree/$BR/_server_dump"
