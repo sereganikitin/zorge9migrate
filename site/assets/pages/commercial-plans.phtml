@@ -305,7 +305,7 @@
     if (window.__zorgeCommercialTenantOverlay) return;
     window.__zorgeCommercialTenantOverlay = true;
 
-    var DBG = false;  // включи в true чтобы видеть диагностику в консоли
+    var DBG = true;  // временно для дебага pjax-навигации; убрать когда заработает
     function log() {
         if (!DBG) return;
         try { console.log.apply(console, ['[tenant-overlay]'].concat([].slice.call(arguments))); } catch(_){}
