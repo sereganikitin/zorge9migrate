@@ -335,52 +335,48 @@
         if (!apts) return;
 
         var popups = document.querySelectorAll('.plan_frame.n0 .flat_popup_item');
-        log('apply: paths=?', 'popups=' + popups.length);
         if (!popups.length) return;
 
-        var pathCount = 0, withTenant = 0, matched = 0;
-        inst.forEach(function (path) {
-            pathCount++;
+        // Собираем paths в массив. area2svg обрабатывает selection.svg path-ы
+        // по очереди, для каждого вызывает options.each → плагин flowering
+        // floor_info.add → popups_template → append popup HTML. Popup-ы потом
+        // вставляются единым блоком (.before(html)). Это значит popups[i]
+        // соответствует path-у с индексом i — стабильный матч по INDEX.
+        //
+        // Раньше я матчил по позиции (centroid → top/left %) но это рушится
+        // после resize / pjax-перерисовки: path.paper_* или getCentroid()
+        // могут возвращать другое значение чем когда popup был создан.
+        var paths = [];
+        inst.forEach(function (path) { paths.push(path); });
+
+        if (paths.length !== popups.length) {
+            log('count mismatch: paths=' + paths.length + ' popups=' + popups.length + ' — skip');
+            return;
+        }
+
+        var withTenant = 0, matched = 0, already = 0;
+        for (var i = 0; i < paths.length; i++) {
+            var path = paths[i];
             var alt = path.alt;
             var apt = apts[alt];
             if (!apt) {
-                if (pathCount <= 3) log('no apt for alt=' + alt);
-                return;
+                if (i < 3) log('no apt for alt=' + alt);
+                continue;
             }
-            if (!apt.tenant) return;
+            if (!apt.tenant) continue;
             withTenant++;
-            try {
-                var box = path.getCentroid();
-                if (!isFinite(box.cx) || !isFinite(box.cy)) return;
-                var topPct = (100 * (box.cy - path.paper_y) / path.paper_height);
-                var leftPct = (100 * (box.cx - path.paper_x) / path.paper_width);
-                var found = false;
-                for (var i = 0; i < popups.length; i++) {
-                    var p = popups[i];
-                    if (p.dataset.tenantApplied === '1') continue;
-                    var pt = parseFloat(p.style.top);
-                    var pl = parseFloat(p.style.left);
-                    if (!isFinite(pt) || !isFinite(pl)) continue;
-                    if (Math.abs(pt - topPct) < 0.5 && Math.abs(pl - leftPct) < 0.5) {
-                        var letter = p.querySelector('.letter');
-                        if (letter) {
-                            letter.textContent = apt.tenant;
-                            letter.classList.add('has-tenant');
-                            p.dataset.tenantApplied = '1';
-                            matched++;
-                            found = true;
-                        }
-                        break;
-                    }
-                }
-                if (!found && withTenant <= 3) {
-                    log('no popup match for', alt, 'tenant=' + apt.tenant, 'expected pos=', topPct.toFixed(2), leftPct.toFixed(2));
-                }
-            } catch (e) {
-                log('getCentroid err', alt, e.message);
+            var p = popups[i];
+            if (p.dataset.tenantApplied === '1') { already++; continue; }
+            var letter = p.querySelector('.letter');
+            if (letter) {
+                letter.textContent = apt.tenant;
+                letter.classList.add('has-tenant');
+                p.dataset.tenantApplied = '1';
+                matched++;
             }
-        });
-        log('summary: paths=' + pathCount + ' withTenant=' + withTenant + ' matched=' + matched);
+        }
+        log('summary: paths=' + paths.length + ' popups=' + popups.length
+            + ' withTenant=' + withTenant + ' matched=' + matched + ' already=' + already);
     }
 
     // Бесконечный polling. Pjax при навигации между корпусами заменяет
