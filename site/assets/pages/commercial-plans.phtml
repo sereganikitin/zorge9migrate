@@ -256,6 +256,19 @@
     display: none !important;
 }
 
+/* Force-show нижней панели .apart_details_frame на floor-state hover.
+ * Бандл commercial-plans.js показывает её только в flat-state (через
+ * CSS .flat_state .apart_details_frame.at_flat). Для hover мы добавляем
+ * класс com-hover-shown JS-ом и !important перебиваем все скрывающие
+ * стили (display/opacity/visibility). pointer-events:none чтобы плашка
+ * не перехватывала мышь и hover-out срабатывал. */
+.apart_details_frame.com-hover-shown {
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: none !important;
+}
+
 /* Tenant <text> рендерится в _selection.svg на TOP-слое — естественно
  * лежит над растром. Белый fill с тёмным stroke для читаемости. */
 .plan_frame.n0 .plan_frame_content text.oe-tenant-label {
@@ -389,6 +402,10 @@
             var bottomNode = path.bottom && path.bottom.node;
             var p = popups[i];
 
+            // Сохраняем alt на DOM-узлах для delegation-handler-а тултипа.
+            if (topNode && alt) topNode.dataset.altKey = alt;
+            if (bottomNode && alt) bottomNode.dataset.altKey = alt;
+
             // Полигон: показываем ТОЛЬКО для active
             if (isActive) {
                 if (topNode) topNode.classList.remove('com-hidden');
@@ -481,6 +498,98 @@
         document.addEventListener('DOMContentLoaded', startObserver);
     } else {
         startObserver();
+    }
+})();
+</script>
+
+<script>
+/* Hover-details: при наведении на активный полигон на поэтажке показываем
+ * нижнюю плашку .apart_details_frame (с площадью, ценой, потолками,
+ * мощностью), как в residential-апартах.
+ *
+ * Бандл commercial-plans.js вызывает load_apart_details ТОЛЬКО при клике
+ * (state переходит в 'flat'). Реплицируем сюда, используя delegation на
+ * .plan_frame.n0 .plan_frame_content. data-altKey на path-узлах ставит
+ * applyTenants (см. выше). Force-show через класс com-hover-shown на
+ * .apart_details_frame + CSS !important. */
+(function () {
+    if (window.__zorgeComHoverDetails) return;
+    window.__zorgeComHoverDetails = true;
+
+    function addspace(n) {
+        return String(n).replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1 ');
+    }
+
+    function getApt(altKey) {
+        if (!altKey) return null;
+        if (!window.data || !window.data.commercial || !window.data.commercial.apartments) return null;
+        return window.data.commercial.apartments[altKey] || null;
+    }
+
+    function setField(frame, name, value) {
+        var el = frame.querySelector('[data-targ="' + name + '"] .value');
+        if (el) el.innerHTML = (value == null || value === '') ? '' : value;
+    }
+
+    function showDetails(apt) {
+        var frame = document.querySelector('.apart_details_frame');
+        if (!frame || !apt) return;
+        var isSale = (window.type === 'sale');
+
+        setField(frame, 'n',   apt.tr_n || '');
+        setField(frame, 'sq',  apt.sq != null ? apt.sq : '');
+        if (isSale) {
+            setField(frame, 'tc',  apt.tc  ? addspace(apt.tc)  : '');
+            setField(frame, 'cpm', apt.cpm ? addspace(apt.cpm) : '');
+        } else {
+            setField(frame, 'tcr',      apt.tcr      ? addspace(apt.tcr)      : '');
+            setField(frame, 'cpm_year', apt.cpm_year ? addspace(apt.cpm_year) : '');
+        }
+        setField(frame, 'ceil', apt.ceil != null ? apt.ceil : '');
+        setField(frame, 'pw',   apt.pw   != null ? apt.pw   : '');
+
+        frame.classList.add('com-hover-shown');
+    }
+
+    function hideDetails() {
+        var frame = document.querySelector('.apart_details_frame');
+        if (frame) frame.classList.remove('com-hover-shown');
+    }
+
+    function isActivePath(node) {
+        // У скрытых path-ов класс com-hidden — пропускаем
+        return node && node.classList && !node.classList.contains('com-hidden');
+    }
+
+    function attach() {
+        var floor = document.querySelector('.plan_frame.n0 .plan_frame_content');
+        if (!floor) { setTimeout(attach, 300); return; }
+        if (floor.dataset.hoverDetailsAttached === '1') return;
+        floor.dataset.hoverDetailsAttached = '1';
+
+        floor.addEventListener('mouseover', function (e) {
+            var t = e.target;
+            if (!t || t.tagName.toLowerCase() !== 'path') return;
+            if (!isActivePath(t)) return;
+            var alt = t.dataset && t.dataset.altKey;
+            if (!alt) return;
+            var apt = getApt(alt);
+            if (!apt) return;
+            showDetails(apt);
+        });
+
+        floor.addEventListener('mouseout', function (e) {
+            var t = e.target;
+            if (!t || t.tagName.toLowerCase() !== 'path') return;
+            // Если ушли с path-а — скрываем
+            hideDetails();
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', attach);
+    } else {
+        attach();
     }
 })();
 </script>
