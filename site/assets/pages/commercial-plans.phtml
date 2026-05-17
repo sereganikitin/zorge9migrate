@@ -1,0 +1,348 @@
+<?php
+	$type = $this -> id() === '154' ? 'sale' : 'rent';
+?>
+
+<script>
+	var type = <?= json_encode($type); ?>;
+</script>
+
+<?php if (!empty($this->content('h1'))): ?>
+	<h1 class="g-meta-hidden"><?= $this->content('h1'); ?></h1>
+<?php endif; ?>
+<div class="textScroll__wrapper">
+	<div class="v-frame" :class="state+'_state b_'+b+' s_'+s+' f_'+f+' n_'+n">
+		<div class="relative at_korpus">
+			<div class="bg_block">
+				<div class="plans_header">
+					<div class="item n0">
+						<div class="line n0">Выберите<br>корпус</div>
+						<div class="line n1">из доступных</div>
+					</div>
+				</div>
+			</div>
+			<div class="genplan_wrapper">
+                <div class="div_100 bg_size plans_map__zoom">
+                    <div class="plans_map__zoom-size">
+                        <div class="plans__zoom-content">
+                            <img class="div_100 wait-load" src="/assets/images/commercial-plans/genplan-new.webp" alt="genplan">
+                            <div class="div_100 plans_map_cont">
+                                <map>
+                                    <?= $this -> content('genplan_area'); ?>
+                                </map>
+                            </div>
+							<div class="fitness div_100">
+								<div class="fitness-plan-overlay"></div>
+								<img class="fitness-plan" src="/hydra/svg/fitnes/b1-s1-f1.png" />
+							</div>
+							<div class="fitness-button"></div>
+						</div>
+                    </div>
+                </div>
+			</div>
+		</div>
+
+
+		<div class="floor_frame at_floor at_flat">
+			<div class="plans_header">
+				<div class="item n0 at_floor">
+					<div class="line n0">Выберите <br>помещение</div>
+					<div class="line n1">из доступных</div>
+				</div>
+				<div class="item n1">
+					<div class="korp_det n0">
+						<div class="div_100 at_korpus at_floor">
+							<div class="floor_up"><div class="val"></div></div>
+							<div class="floor_down"><div class="val"></div></div>
+						</div>
+						<div class="line n0" v-html="true_f"></div>
+						<div class="line n1">этаж</div>
+					</div>
+					<div class="korp_det n1">
+						<div class="div_100 at_korpus at_floor">
+							<div class="sect_left"></div>
+							<div class="sect_right"></div>
+						</div>
+						<div class="line n0" v-html="b"></div>
+						<div class="line n1">корпус</div>
+					</div>
+				</div>
+				<!-- <div class="minimap at_korpus at_floor">
+					<map>
+						<area shape="poly" coords="101,73,117,73,117,116,101,116,101,73" href="javascript:;" title="1" alt="1" />
+						<area shape="poly" coords="67,70,83,74,71,116,55,112,67,70" href="javascript:;" title="2" alt="2" />
+						<area shape="poly" coords="34,67,45,78,14,109,3,98,34,67" href="javascript:;" title="3" alt="3" />
+					</map>
+				</div> -->
+			</div>
+			<!-- <div class="windrose_block">
+				<div class="windrose">
+					<div class="windrose_letter north">С</div>
+				</div>
+			</div> -->
+			<div class="plan_frame at_flat n1">
+				<div class="plan_frame_w">
+					<img class="plan_frame_sq">
+					<div class="plan_frame_h">
+						<img class="plan_frame_sq">
+						<div class="plan_frame_content div_100"></div>
+					</div>
+				</div>
+			</div>
+			<div class="plan_frame n0 at_floor">
+				<div class="plan_frame_content plan_frame_size div_100">
+					<div class="floor_map_cont"></div>
+				</div>
+			</div>
+
+			<div class="apart_details_frame at_flat">
+				<div class="bg">
+					<div class="item n" data-targ="n">
+						<div class="value"></div>
+						<div class="title">лот</div>
+					</div>
+					<div class="item sq" data-targ="sq">
+						<div class="value"></div>
+						<div class="title">площадь, м<sup>2</sup></div>
+					</div>
+					<? if (!$hide_price_com) {
+						if ($type === 'sale') { ?>
+							<div class="item tc" data-targ="tc">
+								<div class="value"></div>
+								<div class="title">стоимость покупки, руб.</div>
+							</div>
+							<div class="item cpm" data-targ="cpm">
+								<div class="value"></div>
+								<div class="title">стоимость за м<sup>2</sup>, руб.</div>
+							</div>
+						<? }  else { ?>
+							<div class="item tcr" data-targ="tcr">
+								<div class="value"></div>
+								<div class="title">стоимость аренды, руб./мес.</div>
+							</div>
+							<div class="item cpm_year" data-targ="cpm_year">
+								<div class="value"></div>
+								<div class="title">Стоимость аренды за кв.м., руб./год</div>
+							</div>
+						<? }
+					} ?>
+
+					<div class="item ceil" data-targ="ceil">
+						<div class="value"></div>
+						<div class="title">Высота потолка, м</div>
+					</div>
+					<div class="item pw" data-targ="pw">
+						<div class="value"></div>
+						<div class="title">Подводимая мощность, кВт</div>
+					</div>
+					<div class="not_sale_text">не в продаже</div>
+				</div>
+			</div>
+
+			<div class="apart_act_frame at_flat">
+				<div class="level_sel_block">
+					<div class="level_up" data-targ="2"><div class="val">2</div></div>
+					<div class="level_down" data-targ="1"><div class="val">1</div></div>
+					<div class="value" v-html="level"></div>
+					<div class="title">уровень <br>апартамента</div>
+				</div>
+				<div class="actions">
+					<div class="item icon-pdf fitness-pdf_btn">
+						<a href="/public/documents/Zorge_9_Fitness.pdf" target="_blank">
+							Скачать презентацию
+						</a>
+					</div>
+					<div class="item icon-bron reserve_btn">
+						<span>Забронировать</span>
+					</div>
+					<div class="item booked_btn">
+						<span>Забронировано</span>
+					</div>
+					<div class="item icon-pdf pdf_btn">
+						<span>скачать PDF</span>
+					</div>
+				</div>
+			</div>
+			<div class="plans_close">Назад</div>
+		</div>
+	</div>
+
+	<div class="plans__scroll">
+		<div class="plans__scroll-content">
+			<div class="plans-scheme">
+				<div class="scheme-select">
+					<div class="active" data-open="1">на схеме этажа</div>
+					<div data-open="2">на схеме застройки</div>
+				</div>
+				<div class="scheme-section scheme-1">
+					<div class="flat_floor_resize div_100">
+						<div class="plans_frame_content"></div>
+					</div>
+				</div>
+				<div class="scheme-section scheme-2 hidden">
+					<div class="scheme-section_wrapper">
+						<img class="wait-load" src="/assets/images/commercial-plans/genplan-new.webp" alt="genplan">
+						<div class="scheme-genplan div_100">
+							<map>
+								<?= $this -> content('genplan_area'); ?>
+							</map>
+						</div>
+						<div class="fitness div_100">
+							<div class="fitness-plan-overlay"></div>
+							<img class="fitness-plan" src="/hydra/svg/fitnes/b1-s1-f1-v2.png" />
+							<div class="fitness-button"></div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="h10em"></div>
+			<!-- <div class="plans__scroll-feedback">
+				Оставить заявку
+			</div>
+			<div class="h10em"></div> -->
+			<!-- /// -->
+			<div class="podbor-form">
+				<?
+					(new FeedbacksController())->getPopup('podbor');
+				?>
+			</div>
+
+		</div>
+	</div>
+</div>
+
+<style>
+/* Лейбл арендатора для коммерческих помещений с заполненным полем
+ * `tenant` в com.json. Заменяет дефолтный «Бронь»/«Продано» в popup-е,
+ * который рисует area2svg-плагин. Сделано тут (а не в style.css-бандле)
+ * чтобы быть локальной правкой страницы без затрагивания общих стилей. */
+.flat_popup_item .letter.has-tenant {
+    background: rgba(20, 20, 20, 0.78);
+    color: #fff;
+    padding: 0.25em 0.6em;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-weight: 600;
+    white-space: nowrap;
+    max-width: 12em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
+</style>
+
+<script>
+/* Tenant-overlay для коммерческих popup-ов.
+ *
+ * Контекст: бандл assets/js/script.js рисует на коммерческой поэтажке
+ * popup-ы с текстом «Бронь»/«Продано» по статусу. Бандл собирается
+ * отдельным процессом, мы его не правим. Поэтому накладываем JS-патч
+ * на странице: ловим появление .flat_popup_item, для каждого ищем
+ * соответствующий <path> в area2svg-инстансе (совпадение центроида
+ * с top/left popup-а), берём tenant из window.data и подменяем текст.
+ *
+ * При смене этажа / resize area2svg перерисовывает popup-ы заново —
+ * MutationObserver видит новые ноды и опять патчит. data глобальный
+ * (см. plansInit.js:356 `data.living.apartments`). */
+(function () {
+    if (window.__zorgeCommercialTenantOverlay) return;
+    window.__zorgeCommercialTenantOverlay = true;
+
+    function area2svgInstance() {
+        if (!window.jQuery) return null;
+        var $el = jQuery('.plan_frame.n0 .plan_frame_content');
+        return ($el && $el.length) ? $el.data('area2svg') : null;
+    }
+
+    function apartmentsAll() {
+        if (!window.data || !window.data.commercial || !window.data.commercial.apartments) {
+            return null;
+        }
+        return window.data.commercial.apartments;
+    }
+
+    function applyTenants() {
+        var inst = area2svgInstance();
+        if (!inst) return;
+        var apts = apartmentsAll();
+        if (!apts) return;
+
+        var popups = document.querySelectorAll('.plan_frame.n0 .flat_popup_item');
+        if (!popups.length) return;
+
+        // Для каждого <path> в area2svg-инстансе:
+        //   1) находим alt → apt → tenant
+        //   2) считаем top/left popup-а тем же способом что и popups_template
+        //      (centroid + paper_x/y/width/height) — это позиция popup-а
+        //   3) находим popup на совпадающей позиции (tolerance 0.5%) и
+        //      подменяем текст
+        inst.forEach(function (path) {
+            var alt = path.alt;
+            var apt = apts[alt];
+            if (!apt || !apt.tenant) return;
+
+            try {
+                var box = path.getCentroid();
+                if (!isFinite(box.cx) || !isFinite(box.cy)) return;
+                var topPct = (100 * (box.cy - path.paper_y) / path.paper_height);
+                var leftPct = (100 * (box.cx - path.paper_x) / path.paper_width);
+
+                for (var i = 0; i < popups.length; i++) {
+                    var p = popups[i];
+                    if (p.dataset.tenantApplied === '1') continue;
+                    var pt = parseFloat(p.style.top);
+                    var pl = parseFloat(p.style.left);
+                    if (!isFinite(pt) || !isFinite(pl)) continue;
+                    if (Math.abs(pt - topPct) < 0.5 && Math.abs(pl - leftPct) < 0.5) {
+                        var letter = p.querySelector('.letter');
+                        if (letter) {
+                            letter.textContent = apt.tenant;
+                            letter.classList.add('has-tenant');
+                            p.dataset.tenantApplied = '1';
+                        }
+                        break;
+                    }
+                }
+            } catch (e) {
+                // getCentroid может бросать на вырожденных path-ах — молча
+            }
+        });
+    }
+
+    var debounceTimer = null;
+    function scheduleApply() {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(applyTenants, 80);
+    }
+
+    function startObserver() {
+        var root = document.querySelector('.plan_frame.n0');
+        if (!root) {
+            setTimeout(startObserver, 300);
+            return;
+        }
+        var ob = new MutationObserver(function (muts) {
+            for (var i = 0; i < muts.length; i++) {
+                var added = muts[i].addedNodes;
+                for (var j = 0; j < added.length; j++) {
+                    var n = added[j];
+                    if (n.nodeType !== 1) continue;
+                    if ((n.classList && n.classList.contains('flat_popup_item')) ||
+                        (n.querySelector && n.querySelector('.flat_popup_item'))) {
+                        scheduleApply();
+                        return;
+                    }
+                }
+            }
+        });
+        ob.observe(root, { childList: true, subtree: true });
+        // На случай если popup-ы уже на странице (после прихода c прямой ссылки)
+        scheduleApply();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startObserver);
+    } else {
+        startObserver();
+    }
+})();
+</script>

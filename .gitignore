@@ -27,3 +27,7 @@ Thumbs.db
 # Локальные артефакты deploy (НЕ в репо!)
 .deploy-secrets/
 
+# Дамп untracked серверных файлов (для локального ознакомления, не для коммита)
+_dump/
+server-dump.zip
+

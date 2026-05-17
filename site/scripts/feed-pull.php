@@ -34,6 +34,10 @@ declare(strict_types=1);
 if (PHP_SAPI !== 'cli') { http_response_code(403); exit('CLI only'); }
 
 const PROFITBASE_URL    = 'https://pb7828.profitbase.ru/export/profitbase_xml/2d1c9a6fdf95ba53617e48f4ceef5556?scheme=https';
+// com.json — отдельный pipeline для /retail/commercial-plans (не feed-pull).
+// Мы только обогащаем его новым полем `tenant` для существующих apt-ов
+// (matching по Profitbase internal-id). Остальные поля com.json не трогаем.
+const COM_JSON_PATH     = '/var/www/old.zorge9.com/htdocs/hydra/json/com.json';
 // Отдельный фид для коммерческих помещений. Все offer-ы там коммерческие,
 // property_type не фильтруем. Из custom-field «Арендатор» берём имя для
 // SVG-лейбла поверх полигона на поэтажке (вместо area2svg-«Бронь»/«Продано»).
@@ -425,6 +429,76 @@ function write_atomic(string $path, string $content): bool {
     if (file_put_contents($tmp, $content) === false) return false;
     if (!rename($tmp, $path)) { @unlink($tmp); return false; }
     return true;
+}
+
+/**
+ * MVP-обогащение com.json: добавляет/обновляет/удаляет поле `tenant` в
+ * существующих apartments, matching по Profitbase internal-id. Остальные
+ * поля com.json (b, s, f, n, st, str, tc, tcr, ceil, pw, apt, img, lvl, ...)
+ * НЕ трогаем — com.json генерится отдельным процессом (или вручную) с
+ * собственными конвенциями (см. memory/project_com_pipeline_details.md).
+ *
+ * Apartments в фиде без совпадения id в com.json игнорируем — новые
+ * commercial-помещения сейчас сами не добавляются (это следующая фаза,
+ * полноценный com-pull.php).
+ *
+ * Возвращает кол-во обновлённых записей (для логирования).
+ */
+function update_com_tenants(string $com_path, array $apartments): int {
+    if (!file_exists($com_path)) {
+        fwrite(STDERR, "[feed-pull] WARN: com.json not found at $com_path — skip tenant update\n");
+        return 0;
+    }
+    $raw = @file_get_contents($com_path);
+    if ($raw === false) {
+        fwrite(STDERR, "[feed-pull] WARN: cannot read $com_path — skip tenant update\n");
+        return 0;
+    }
+    $com = json_decode($raw, true);
+    if (!is_array($com) || !isset($com['apartments']) || !is_array($com['apartments'])) {
+        fwrite(STDERR, "[feed-pull] WARN: com.json malformed — skip tenant update\n");
+        return 0;
+    }
+
+    // Profitbase id → tenant из коммерческих apt-ов feed-pull-а
+    $id_to_tenant = [];
+    foreach ($apartments as $a) {
+        if (empty($a['_is_commercial'])) continue;
+        $aid = (string)($a['id'] ?? '');
+        $tenant = trim((string)($a['tenant'] ?? ''));
+        if ($aid !== '' && $tenant !== '') {
+            $id_to_tenant[$aid] = $tenant;
+        }
+    }
+
+    $updated = 0;
+    foreach ($com['apartments'] as $key => &$apt) {
+        $aid = (string)($apt['id'] ?? '');
+        if ($aid === '') continue;
+        $new_tenant = $id_to_tenant[$aid] ?? '';
+        $old_tenant = (string)($apt['tenant'] ?? '');
+        if ($new_tenant === $old_tenant) continue;
+        if ($new_tenant === '') {
+            unset($apt['tenant']);
+        } else {
+            $apt['tenant'] = $new_tenant;
+        }
+        $updated++;
+    }
+    unset($apt);
+
+    if ($updated === 0) return 0;
+
+    $json = json_encode($com, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if ($json === false) {
+        fwrite(STDERR, "[feed-pull] WARN: com.json json_encode failed — skip tenant write\n");
+        return 0;
+    }
+    if (!write_atomic($com_path, $json)) {
+        fwrite(STDERR, "[feed-pull] WARN: com.json atomic write failed\n");
+        return 0;
+    }
+    return $updated;
 }
 
 // --- main -----------------------------------------------------------
@@ -928,6 +1002,12 @@ $map_json = json_encode($map_out, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHE
 if (file_put_contents(MAP_TMP_FILE, $map_json) === false) fail('write map tmp failed');
 if (!rename(MAP_TMP_FILE, MAP_FILE)) fail('rename map failed');
 
+// MVP: enrich существующего com.json новым полем `tenant` для коммерческих
+// помещений (где Profitbase id совпадает с com.json id). Делаем ДО cleanup-а
+// чтобы _is_commercial был ещё доступен. Failure не валит pipeline (data.json
+// уже записан, тут только обогащение второстепенного файла).
+$com_tenants_updated = update_com_tenants(COM_JSON_PATH, $apartments);
+
 // убираем временные поля
 foreach ($apartments as $k => &$a) {
     unset($a['_built_year'], $a['_ready_quarter'], $a['_pos_on_floor'], $a['_is_commercial']);
@@ -957,4 +1037,5 @@ fwrite(STDOUT, "[feed-pull] " . date('c') . " ok: $residential_n apartments + $c
     . " no-bldg=" . $counts['no_building']
     . " collisions=" . $counts['collision']
     . " | dynamic floors: $dyn_n (sel=$sel_written, raster=$mirrored)"
+    . " | com.json tenant updates: $com_tenants_updated"
     . ", {$elapsed}s\n");

@@ -1,0 +1,40 @@
+<?
+	if(isset($_GET) && is_array($_GET)) {
+		$search_hash = urldecode(http_build_query($_GET));
+	}
+?>
+<script>
+	var search_hash=<?= json_encode($search_hash); ?>;
+	var plans_info =<?= json_encode($this -> plans_info); ?>;
+</script>
+<div class="search_right">
+    <div class="search_right_wrap">
+        <div class="search_results">
+            <div class="search_header_div search_result_row">
+                <div class="search_result_col col_n" data-targ="n"><span>Лот</span></div>
+                <div class="search_result_col col_b" data-targ="b"><span>Корпус</span></div>
+                <div class="search_result_col col_f" data-targ="f"><span>Этаж</span></div>
+                <div class="search_result_col col_pw" data-targ="pw"><span>Мощность, кВт</span></div>
+                <div class="search_result_col col_ceil" data-targ="ceil"><span>Высота<br>потолков, м</span></div>
+                <div class="search_result_col col_sq" data-targ="sq"><span>Площадь, м<sup>2</sup></span></div>
+            </div>
+            <div class="search_result_div text_scroll">
+                <div class="content no_padding"></div>
+            </div>
+        </div>
+        <div class="search_preloader div_100"><img class="preloader_img" src="/assets/i/ring-alt.svg" /></div>
+    </div>
+</div>
+<div class="bottom_menu">
+    <div class="close_btn"></div>
+    <div class="bottom_menu_title">Параметры поиска</div>
+    <div class="search_left">
+        <div class="search_slider_wrap">
+            <div class="search_slider n1" data-targ="b" data-title="Корпус"></div>
+            <div class="search_slider n2" data-targ="f" data-title="Этаж"></div>
+            <div class="search_slider n3" data-targ="sq" data-delta="1" data-title="Площадь, м<sup>2</sup>"></div>
+<!--            <div class="search_slider n4" data-targ="tc" data-step="100000" data-division="1000000" data-delta="1" data-title="Цена, млн руб."></div>-->
+        </div>
+    </div>
+</div>
+<? include 'assets/m/layout/comm_popup.phtml'; ?>
