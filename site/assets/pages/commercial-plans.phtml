@@ -256,17 +256,29 @@
     display: none !important;
 }
 
-/* Force-show нижней панели .apart_details_frame на floor-state hover.
- * Бандл commercial-plans.js показывает её только в flat-state (через
- * CSS .flat_state .apart_details_frame.at_flat). Для hover мы добавляем
- * класс com-hover-shown JS-ом и !important перебиваем все скрывающие
- * стили (display/opacity/visibility). pointer-events:none чтобы плашка
- * не перехватывала мышь и hover-out срабатывал. */
+/* Force-show нижней панели для floor-state hover.
+ * Бандл показывает .apart_details_frame только в flat-state через
+ * вложенный селектор (.flat_state .apart_details_frame.at_flat).
+ * Чтобы перебить с floor-state, используем БОЛЕЕ специфичный селектор
+ * (v-frame + frame + класс) + position fixed-в-углу, чтобы не зависеть
+ * от того как существующий CSS позиционирует панель для flat-state.
+ * pointer-events:none — иначе плашка перехватывает мышь и hover-out
+ * стримгерится постоянно. */
+.v-frame .floor_frame .apart_details_frame.com-hover-shown,
+.v-frame .apart_details_frame.com-hover-shown,
 .apart_details_frame.com-hover-shown {
     display: block !important;
     opacity: 1 !important;
     visibility: visible !important;
     pointer-events: none !important;
+    position: fixed !important;
+    right: 2em !important;
+    bottom: 2em !important;
+    left: auto !important;
+    top: auto !important;
+    transform: none !important;
+    z-index: 100 !important;
+    max-width: 360px !important;
 }
 
 /* Tenant <text> рендерится в _selection.svg на TOP-слое — естественно
@@ -503,27 +515,26 @@
 </script>
 
 <script>
-/* Hover-details: при наведении на активный полигон на поэтажке показываем
- * нижнюю плашку .apart_details_frame (с площадью, ценой, потолками,
- * мощностью), как в residential-апартах.
+/* Hover-details: при hover на активном полигоне показываем нижнюю плашку
+ * .apart_details_frame с площадью/ценой/потолками/мощностью — как в
+ * residential-апартах. Бандл вызывает load_apart_details только на клик
+ * (state→flat), не на hover. Реплицируем сюда.
  *
- * Бандл commercial-plans.js вызывает load_apart_details ТОЛЬКО при клике
- * (state переходит в 'flat'). Реплицируем сюда, используя delegation на
- * .plan_frame.n0 .plan_frame_content. data-altKey на path-узлах ставит
- * applyTenants (см. выше). Force-show через класс com-hover-shown на
- * .apart_details_frame + CSS !important. */
+ * Цепляемся ПРЯМО к SVG.js-обёрткам area2svg-инстанса (а не delegation
+ * на контейнере) — надёжнее, точно знаем path.alt в момент handler-а. */
 (function () {
     if (window.__zorgeComHoverDetails) return;
     window.__zorgeComHoverDetails = true;
 
+    var HDBG = true;  // включи в false когда работает
+    function hlog() {
+        if (!HDBG) return;
+        try { console.log.apply(console, ['[hover-details]'].concat([].slice.call(arguments))); } catch(_){}
+    }
+    hlog('script loaded');
+
     function addspace(n) {
         return String(n).replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1 ');
-    }
-
-    function getApt(altKey) {
-        if (!altKey) return null;
-        if (!window.data || !window.data.commercial || !window.data.commercial.apartments) return null;
-        return window.data.commercial.apartments[altKey] || null;
     }
 
     function setField(frame, name, value) {
@@ -533,7 +544,8 @@
 
     function showDetails(apt) {
         var frame = document.querySelector('.apart_details_frame');
-        if (!frame || !apt) return;
+        if (!frame) { hlog('no .apart_details_frame'); return; }
+        if (!apt) return;
         var isSale = (window.type === 'sale');
 
         setField(frame, 'n',   apt.tr_n || '');
@@ -549,6 +561,7 @@
         setField(frame, 'pw',   apt.pw   != null ? apt.pw   : '');
 
         frame.classList.add('com-hover-shown');
+        hlog('shown for', apt.tr_n || apt.id);
     }
 
     function hideDetails() {
@@ -556,40 +569,68 @@
         if (frame) frame.classList.remove('com-hover-shown');
     }
 
-    function isActivePath(node) {
-        // У скрытых path-ов класс com-hidden — пропускаем
-        return node && node.classList && !node.classList.contains('com-hidden');
+    function area2svgInst() {
+        if (!window.jQuery) return null;
+        var $el = jQuery('.plan_frame.n0 .plan_frame_content');
+        return ($el && $el.length) ? $el.data('area2svg') : null;
     }
 
-    function attach() {
-        var floor = document.querySelector('.plan_frame.n0 .plan_frame_content');
-        if (!floor) { setTimeout(attach, 300); return; }
-        if (floor.dataset.hoverDetailsAttached === '1') return;
-        floor.dataset.hoverDetailsAttached = '1';
+    function aptsAll() {
+        if (!window.data || !window.data.commercial) return null;
+        return window.data.commercial.apartments || null;
+    }
 
-        floor.addEventListener('mouseover', function (e) {
-            var t = e.target;
-            if (!t || t.tagName.toLowerCase() !== 'path') return;
-            if (!isActivePath(t)) return;
-            var alt = t.dataset && t.dataset.altKey;
-            if (!alt) return;
-            var apt = getApt(alt);
-            if (!apt) return;
-            showDetails(apt);
-        });
+    // Цепляем .mouseover/.mouseout к каждому path-у area2svg-инстанса.
+    // Идемпотентно через path._zorgeHoverAttached flag.
+    function tryAttachToPaths() {
+        var inst = area2svgInst();
+        if (!inst) return 0;
+        var apts = aptsAll();
+        if (!apts) return 0;
+        var attached = 0;
+        inst.forEach(function (path) {
+            if (path._zorgeHoverAttached) return;
+            // Active-only check: смотрим на DOM-узел (класс com-hidden ставит applyTenants)
+            var node = path.node;
+            // Цепляем даже если path сейчас hidden — на случай если позже станет active
+            path._zorgeHoverAttached = true;
+            attached++;
 
-        floor.addEventListener('mouseout', function (e) {
-            var t = e.target;
-            if (!t || t.tagName.toLowerCase() !== 'path') return;
-            // Если ушли с path-а — скрываем
-            hideDetails();
+            // SVG.js обёрточные методы
+            path.mouseover(function () {
+                if (node && node.classList && node.classList.contains('com-hidden')) return;
+                var apt = apts[path.alt];
+                hlog('mouseover', path.alt, apt ? 'apt=' + apt.tr_n : 'no apt');
+                if (apt) showDetails(apt);
+            });
+            path.mouseout(function () {
+                hideDetails();
+            });
         });
+        if (attached) hlog('attached to', attached, 'paths');
+        return attached;
+    }
+
+    // Polling — area2svg может пересоздаваться (смена этажа/корпуса), нужно
+    // attach-нуть к новым path-ам.
+    function poll() {
+        tryAttachToPaths();
+        setTimeout(poll, 1500);
+    }
+
+    function start() {
+        if (!document.querySelector('.plan_frame.n0')) {
+            setTimeout(start, 300);
+            return;
+        }
+        hlog('start');
+        poll();
     }
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', attach);
+        document.addEventListener('DOMContentLoaded', start);
     } else {
-        attach();
+        start();
     }
 })();
 </script>
