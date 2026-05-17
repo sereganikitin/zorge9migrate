@@ -562,7 +562,14 @@ foreach ($floor_extras as $fkey => $url) {
 
 // Генерим _selection.svg для каждого (b-s-f) с apartments — нужен для area2svg.
 // Размер viewBox = размер растра (если зеркалирован) или 1920x1080 default.
+//
+// Важно: если в outlines_com.json НЕТ полигонов для apt-ов этого этажа,
+// мы НЕ перетираем существующий _selection.svg (если он есть). Иначе при
+// каждом запуске затирали бы hand-drawn полигоны из старого pipeline
+// (vector-эпохи), которые админ ещё не перевёл на outline_editor для
+// растров. Лучше stale-but-meaningful полигоны чем регрессия на dummy-ями.
 $selections_written = 0;
+$selections_preserved = 0;
 $apts_by_floor = [];
 foreach ($sorted_keys as $key) {
     $a = $apartments[$key];
@@ -585,9 +592,28 @@ foreach ($apts_by_floor as $fkey => $apts) {
             $w = (int)$sz[0]; $h = (int)$sz[1];
         }
     }
+
+    $sel_path = FLOOR_COM_DIR . "/b{$b}-s{$s}-f{$f}_selection.svg";
+
+    // Есть ли в outlines_com.json хоть один полигон для apt-ов этого этажа?
+    $has_outline_data = false;
+    foreach ($apts as $a) {
+        if (is_array($a['polygon'] ?? null) && count($a['polygon']) >= 3) {
+            $has_outline_data = true;
+            break;
+        }
+    }
+
+    // Если outline-данных нет, но _selection.svg уже на диске и не пустой —
+    // СОХРАНЯЕМ ЕГО. (Hand-drawn от старого pipeline или прошлой генерации.)
+    // Filesize > 200: пустой SVG-шаблон без paths занимает ~100 байт.
+    if (!$has_outline_data && is_file($sel_path) && filesize($sel_path) > 200) {
+        $selections_preserved++;
+        continue;
+    }
+
     $sel = generate_com_selection_svg($b, $s, $f, $apts, $outlines_com, $w, $h);
     if ($sel !== '') {
-        $sel_path = FLOOR_COM_DIR . "/b{$b}-s{$s}-f{$f}_selection.svg";
         if (write_atomic($sel_path, $sel)) $selections_written++;
     }
 }
@@ -633,4 +659,4 @@ $total = count($apartments);
 fwrite(STDOUT, "[com-pull] " . date('c') . " ok: $total apts ({$counts['preserved']} preserved, {$counts['new']} new), "
     . "skipped: status={$counts['skipped_status']} building={$counts['skipped_building']} no-n={$counts['skipped_n']} "
     . "collisions={$counts['collision']} | rasters: {$rasters_mirrored} mirrored, {$rasters_skipped} failed | "
-    . "selections written: $selections_written, {$elapsed}s\n");
+    . "selections: $selections_written written, $selections_preserved preserved (hand-drawn), {$elapsed}s\n");
