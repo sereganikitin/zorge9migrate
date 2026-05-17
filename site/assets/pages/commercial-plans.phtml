@@ -247,16 +247,26 @@
     if (window.__zorgeCommercialTenantOverlay) return;
     window.__zorgeCommercialTenantOverlay = true;
 
+    var DBG = true;  // временно для дебага; убрать когда заработает
+    function log() {
+        if (!DBG) return;
+        try { console.log.apply(console, ['[tenant-overlay]'].concat([].slice.call(arguments))); } catch(_){}
+    }
+    log('script loaded, document.readyState =', document.readyState);
+
     function area2svgInstance() {
-        if (!window.jQuery) return null;
+        if (!window.jQuery) { log('no jQuery'); return null; }
         var $el = jQuery('.plan_frame.n0 .plan_frame_content');
-        return ($el && $el.length) ? $el.data('area2svg') : null;
+        if (!$el.length) { log('no .plan_frame.n0 .plan_frame_content yet'); return null; }
+        var inst = $el.data('area2svg');
+        if (!inst) { log('no area2svg data on container yet'); return null; }
+        return inst;
     }
 
     function apartmentsAll() {
-        if (!window.data || !window.data.commercial || !window.data.commercial.apartments) {
-            return null;
-        }
+        if (!window.data) { log('no window.data yet'); return null; }
+        if (!window.data.commercial) { log('no window.data.commercial yet'); return null; }
+        if (!window.data.commercial.apartments) { log('no window.data.commercial.apartments yet'); return null; }
         return window.data.commercial.apartments;
     }
 
@@ -267,25 +277,26 @@
         if (!apts) return;
 
         var popups = document.querySelectorAll('.plan_frame.n0 .flat_popup_item');
+        log('apply: paths=?', 'popups=' + popups.length);
         if (!popups.length) return;
 
-        // Для каждого <path> в area2svg-инстансе:
-        //   1) находим alt → apt → tenant
-        //   2) считаем top/left popup-а тем же способом что и popups_template
-        //      (centroid + paper_x/y/width/height) — это позиция popup-а
-        //   3) находим popup на совпадающей позиции (tolerance 0.5%) и
-        //      подменяем текст
+        var pathCount = 0, withTenant = 0, matched = 0;
         inst.forEach(function (path) {
+            pathCount++;
             var alt = path.alt;
             var apt = apts[alt];
-            if (!apt || !apt.tenant) return;
-
+            if (!apt) {
+                if (pathCount <= 3) log('no apt for alt=' + alt);
+                return;
+            }
+            if (!apt.tenant) return;
+            withTenant++;
             try {
                 var box = path.getCentroid();
                 if (!isFinite(box.cx) || !isFinite(box.cy)) return;
                 var topPct = (100 * (box.cy - path.paper_y) / path.paper_height);
                 var leftPct = (100 * (box.cx - path.paper_x) / path.paper_width);
-
+                var found = false;
                 for (var i = 0; i < popups.length; i++) {
                     var p = popups[i];
                     if (p.dataset.tenantApplied === '1') continue;
@@ -298,14 +309,30 @@
                             letter.textContent = apt.tenant;
                             letter.classList.add('has-tenant');
                             p.dataset.tenantApplied = '1';
+                            matched++;
+                            found = true;
                         }
                         break;
                     }
                 }
+                if (!found && withTenant <= 3) {
+                    log('no popup match for', alt, 'tenant=' + apt.tenant, 'expected pos=', topPct.toFixed(2), leftPct.toFixed(2));
+                }
             } catch (e) {
-                // getCentroid может бросать на вырожденных path-ах — молча
+                log('getCentroid err', alt, e.message);
             }
         });
+        log('summary: paths=' + pathCount + ' withTenant=' + withTenant + ' matched=' + matched);
+    }
+
+    // Polling fallback — на случай если MutationObserver почему-то не сработает
+    // (pjax-навигация без полной перезагрузки, бандл lazy-инициализирует
+    // что-то после долгой задержки, и т.д.). 3 секунды × каждые 500мс.
+    var pollCount = 0;
+    function poll() {
+        pollCount++;
+        applyTenants();
+        if (pollCount < 20) setTimeout(poll, 500);
     }
 
     var debounceTimer = null;
@@ -317,9 +344,11 @@
     function startObserver() {
         var root = document.querySelector('.plan_frame.n0');
         if (!root) {
+            log('no .plan_frame.n0 yet, retry in 300ms');
             setTimeout(startObserver, 300);
             return;
         }
+        log('observer installed on .plan_frame.n0');
         var ob = new MutationObserver(function (muts) {
             for (var i = 0; i < muts.length; i++) {
                 var added = muts[i].addedNodes;
@@ -328,6 +357,7 @@
                     if (n.nodeType !== 1) continue;
                     if ((n.classList && n.classList.contains('flat_popup_item')) ||
                         (n.querySelector && n.querySelector('.flat_popup_item'))) {
+                        log('observer: popup mutation');
                         scheduleApply();
                         return;
                     }
@@ -335,8 +365,8 @@
             }
         });
         ob.observe(root, { childList: true, subtree: true });
-        // На случай если popup-ы уже на странице (после прихода c прямой ссылки)
         scheduleApply();
+        poll();
     }
 
     if (document.readyState === 'loading') {
