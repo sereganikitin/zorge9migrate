@@ -211,19 +211,19 @@
 </div>
 
 <style>
-/* === Полигоны (oe-active) для растровой коммерческой поэтажки ===
+/* === Полигоны для растровой коммерческой поэтажки ===
  *
- * com-pull.php эмитит <path class="oe-active"> в _selection.svg для apt-ов
- * с реальным полигоном (из outlines_com.json — рисуются админом через
- * расширенный outline_editor). area2svg-плагин копирует path в bottom-svg
- * И top-svg; bottom лежит ПОД растровым background-image, top — НАД ним.
+ * area2svg копирует каждый path в bottom-svg И top-svg; bottom лежит ПОД
+ * растровым background-image (невидим), top — НАД ним. По дефолту area2svg
+ * ставит top: opacity:0, plus commercial-plans.js дополнительно ставит
+ * fill-opacity:0, stroke-opacity:0 → top тоже невидим. Перебиваем через
+ * !important чтобы top-paths стали видимыми над растром.
  *
- * Чтобы полигон был ВИДЕН ПОВЕРХ растра — нужно сделать top-path видимым.
- * area2svg ставит на top opacity:0, plus commercial-plans.js дополнительно
- * ставит fill-opacity:0, stroke-opacity:0. Всё перебиваем через !important.
- * Палитра золотая (rgb(172,150,109) бренд), как на residential — см.
- * /assets/css/floor_raster.css. */
-.plan_frame.n0 .plan_frame_content path.oe-active {
+ * Селектор: ВСЕ paths внутри top-svg (исключая невидимые dummy с fill="none").
+ * Раньше требовали class="oe-active", но preserved hand-drawn _selection.svg
+ * от старого vector-pipeline идут без класса — те бы оставались за растром.
+ * Палитра золотая (rgb(172,150,109)) как на residential floor_raster.css. */
+.plan_frame.n0 .plan_frame_content path:not([fill="none"]) {
     fill: rgba(255, 255, 255, 0.15) !important;
     fill-opacity: 1 !important;
     stroke: rgb(172, 150, 109) !important;
@@ -235,7 +235,7 @@
     transition: fill 150ms ease, stroke 150ms ease, stroke-width 150ms ease;
     pointer-events: auto;
 }
-.plan_frame.n0 .plan_frame_content path.oe-active:hover {
+.plan_frame.n0 .plan_frame_content path:not([fill="none"]):hover {
     fill: rgba(172, 150, 109, 0.55) !important;
     stroke: rgb(255, 215, 100) !important;
     stroke-width: 3.5 !important;
@@ -305,7 +305,7 @@
     if (window.__zorgeCommercialTenantOverlay) return;
     window.__zorgeCommercialTenantOverlay = true;
 
-    var DBG = false;  // включи в true для диагностики в консоли
+    var DBG = true;  // временно включён для диагностики Manhattan
     function log() {
         if (!DBG) return;
         try { console.log.apply(console, ['[tenant-overlay]'].concat([].slice.call(arguments))); } catch(_){}
