@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ru" class="<?= $mobile?'mobile':'desktop'; ?>">
+<head>
+	<? include 'assets/layout/counters_head_start.phtml'; ?>
+	<?php header('X-Robots-Tag: noindex, nofollow, noarchive', true); ?>
+	<meta name="robots" content="noindex, nofollow">
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=Edge">
+	<title><?= $title; ?></title>
+	<meta name="keywords" content="<?= $keywords ?>">
+	<meta name="description" content="<?= $description; ?>">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="viewport" content="width=device-width, user-scalable=no">
+    <meta name="msapplication-TileColor" content="#ffffff">
+    <meta name="msapplication-TileImage" content="/ms-icon-144x144.png">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="apple-touch-icon" sizes="57x57" href="/apple-icon-57x57.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="/apple-icon-60x60.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="/apple-icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="/apple-icon-76x76.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="/apple-icon-114x114.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="/apple-icon-120x120.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="/apple-icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/apple-icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-icon-180x180.png">
+    <link rel="icon" type="image/png" sizes="192x192"  href="/android-icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/manifest.json">
+    <!--    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">-->
+    <!--    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">-->
+    <!--    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">-->
+    <!--    <link rel="manifest" href="/site.webmanifest">-->
+    <!--    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#e13840">-->
+    <!--    <meta name="msapplication-TileColor" content="#e13840">-->
+	
+	<script>
+		var versions = <?= json_encode(get_files_datetime('hydra/json/')); ?>;
+		var mobile = <?= $mobile?"true":"false"; ?>;
+		var pages_info = {current:{url:"<?= $url; ?>",slug:"<?= $slug; ?>",template:"<?= $template; ?>",url_real:"<?= $_SERVER['REQUEST_URI']; ?>"},previous:{url:null,slug:null,template:null,url_real:null}};
+        var domain = '<?= $domain; ?>';
+        var data_folder = '<?= $data_folder; ?>';
+        var hide_price = <?= page::findById(1)->content('hide_price') ? 'true' : 'false'; ?>;
+	</script>
+	<link href="/assets/<?= $src_path; ?>css/style.css?v=<?= $css_version; ?>" rel="stylesheet">
+	<script src="/assets/<?= $src_path; ?>js/libs.js?v=<?= $js_version; ?>"></script>
+	<script src="/assets/<?= $src_path; ?>js/script.js?v=3<?= $js_version; ?>"></script>
+	<? if( $domain != 'dev' ) include 'assets/layout/counters_head_end.phtml'; ?>
+</head>
+<body class="<?= $template; ?>" ontouchstart>
+	<? if( $domain != 'dev' ) include 'assets/layout/counters_body_start.phtml'; ?>
+	<div id="body_frame">
