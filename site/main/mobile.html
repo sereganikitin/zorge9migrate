@@ -241,5 +241,24 @@ string(4) "TEST"
 <!--botfaqtor-->
 <script type="text/javascript">window._ab_id_=163016</script><script src="https://cdn.botfaqtor.ru/one.js"></script>
 	<div class="zoomCursor"></div>
+
+<script data-z9-pjax-bypass>
+// Same fallback as in Wolf header.phtml — needed here because /main is served
+// as a static snapshot and does not go through Wolf rendering.
+(function () {
+    var FULL_NAV = /^\/$|^\/(?:main|apartments|improvement|infrastructure|investment|location|management|parking|penthouses|privacy-policy|request|services|style|promo)(?:\/|$|[?#])/;
+    document.addEventListener('click', function (e) {
+        if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+        var a = e.target.closest && e.target.closest('a[href]');
+        if (!a) return;
+        var href = a.getAttribute('href');
+        if (!href || !FULL_NAV.test(href)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+        window.location.href = href;
+    }, true);
+})();
+</script>
 </body>
 </html>

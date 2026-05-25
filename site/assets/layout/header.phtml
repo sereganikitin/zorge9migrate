@@ -46,6 +46,27 @@
 	<link href="/assets/<?= $src_path; ?>css/style.css?v=<?= $css_version; ?>" rel="stylesheet">
 	<script src="/assets/<?= $src_path; ?>js/libs.js?v=<?= $js_version; ?>"></script>
 	<script src="/assets/<?= $src_path; ?>js/script.js?v=3<?= $js_version; ?>"></script>
+	<script>
+	// Some URLs are no longer Wolf-served (landing at /, static /main snapshots,
+	// mirrored landing pages, and /promo/* folders). The old PJAX layer there
+	// does JSON.parse on what is now HTML, throws inside its success handler,
+	// and the page-transition spinner never clears. Intercept the click in
+	// capture phase so PJAX never sees it; the browser does a normal full nav.
+	(function () {
+		var FULL_NAV = /^\/$|^\/(?:main|apartments|improvement|infrastructure|investment|location|management|parking|penthouses|privacy-policy|request|services|style|promo)(?:\/|$|[?#])/;
+		document.addEventListener('click', function (e) {
+			if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+			var a = e.target.closest && e.target.closest('a[href]');
+			if (!a) return;
+			var href = a.getAttribute('href');
+			if (!href || !FULL_NAV.test(href)) return;
+			e.preventDefault();
+			e.stopPropagation();
+			if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+			window.location.href = href;
+		}, true);
+	})();
+	</script>
 	<? if( $domain != 'dev' ) include 'assets/layout/counters_head_end.phtml'; ?>
 </head>
 <body class="<?= $template; ?>" ontouchstart>
