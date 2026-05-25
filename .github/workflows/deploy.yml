@@ -60,7 +60,7 @@ jobs:
 
       - name: Smoke test
         run: |
-          for url in / /office /pent /retail; do
+          for url in / /main /apartments /office /pent /retail; do
             code=$(curl -sk -o /dev/null -w '%{http_code}' "https://zorge9.infoseledka.ru$url")
             echo "  $url HTTP $code"
             test "$code" = "200" || (echo "FAIL $url"; exit 1)

@@ -80,7 +80,9 @@ server {
     listen [::]:80 default_server;
     server_name _;
 
-    index index.php index.html;
+    # index.html идёт первым: после интеграции лендинга в `/` лежит статика
+    # (site/index.html), а Wolf CMS index.php обслуживает остальные пути через @wolf.
+    index index.html index.php;
     charset utf-8;
     autoindex off;
     root /var/www/old.zorge9.com/htdocs;

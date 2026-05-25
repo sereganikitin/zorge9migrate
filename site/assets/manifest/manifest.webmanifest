@@ -1,0 +1,24 @@
+{
+    "name"              : "Комплекс апартаментов бизнес-класса Зорге 9",
+    "short_name"        : "Зорге 9",
+    "description"       : "Зорге 9 — эксклюзивный комплекс апартаментов в стиле Нью-Йорка на престижной Ходынке. Роскошные интерьеры, сервис пятизвездочного отеля, собственный парк, фитнес-центр для резидентов. Почувствуйте себя на высоте привилегий. ",
+    "start_url"         : "/",
+    "display"           : "minimal-ui",
+    "orientation"       : "any",
+    "icons": [
+        {
+            "src": "/assets/manifest/android-chrome-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/assets/manifest/android-chrome-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "theme_color": "#ffffff",
+    "background_color": "#ffffff"
+}
