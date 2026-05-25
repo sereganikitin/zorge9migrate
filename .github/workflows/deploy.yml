@@ -51,6 +51,16 @@ jobs:
             site/ \
             ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PATH }}
 
+      - name: Remove superseded files (rsync runs without --delete)
+        # /main/index.html was a single desktop snapshot; replaced by index.php that
+        # switches between desktop.html and mobile.html on User-Agent. nginx's
+        # `index index.html index.php` would otherwise still pick the stale html.
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+              -o UserKnownHostsFile=~/.ssh/known_hosts \
+              ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+              "rm -f ${{ secrets.DEPLOY_PATH }}/main/index.html"
+
       - name: Reload PHP-FPM (clear opcache)
         run: |
           ssh -i ~/.ssh/deploy_key \
