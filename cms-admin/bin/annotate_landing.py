@@ -29,6 +29,24 @@ import sys
 
 TEXT_TAGS = ('h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p')
 
+# Pages we actually manage from the CMS. Wolf snapshots in site/main/
+# and the legacy site/promo/* landings are NOT touched.
+LANDING_PAGE_PATHS = {
+    '',                # site/index.html (homepage)
+    'apartments',
+    'improvement',
+    'infrastructure',
+    'investment',
+    'location',
+    'management',
+    'parking',
+    'penthouses',
+    'privacy-policy',
+    'request',
+    'services',
+    'style',
+}
+
 
 def stable_key(prefix: str, content: str, counter: int) -> str:
     h = hashlib.md5(content.encode('utf-8')).hexdigest()[:8]

@@ -2,6 +2,7 @@
 
 namespace App\Controller\Admin;
 
+use App\Service\PageLabels;
 use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminDashboard;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Dashboard;
@@ -16,7 +17,10 @@ use Symfony\Component\Routing\Attribute\Route;
 #[AdminDashboard(routePath: '/', routeName: 'admin')]
 class DashboardController extends AbstractDashboardController
 {
-    public function __construct(private readonly AdminUrlGenerator $urls) {}
+    public function __construct(
+        private readonly AdminUrlGenerator $urls,
+        private readonly PageLabels $pages,
+    ) {}
 
     #[Route('/', name: 'admin')]
     public function index(): Response
@@ -48,23 +52,32 @@ class DashboardController extends AbstractDashboardController
 
     public function configureMenuItems(): iterable
     {
-        yield MenuItem::section('Контент');
-        yield MenuItem::linkTo(TextBlockCrudController::class, 'Тексты лендинга', 'fa fa-pen');
-        yield MenuItem::linkTo(ImageBlockCrudController::class, 'Картинки лендинга', 'fa fa-image');
+        yield MenuItem::section('Страницы лендинга');
 
-        yield MenuItem::section('Новости');
+        // One submenu per landing page: тексты + картинки этого раздела.
+        foreach ($this->pages->orderedPaths() as $path) {
+            $label = $this->pages->humanLabel($path);
+            $icon = $this->pages->icon($path);
+            yield MenuItem::subMenu($label, $icon)->setSubItems([
+                MenuItem::linkTo(TextBlockCrudController::class, 'Тексты', 'fa fa-pen')
+                    ->setQueryParameter('page_filter', $path),
+                MenuItem::linkTo(ImageBlockCrudController::class, 'Картинки', 'fa fa-image')
+                    ->setQueryParameter('page_filter', $path),
+            ]);
+        }
+
+        yield MenuItem::section('Общее');
         yield MenuItem::linkTo(NewsItemCrudController::class, 'Новости / акции', 'fa fa-newspaper');
+        yield MenuItem::linkTo(MediaItemCrudController::class, 'Медиа-библиотека', 'fa fa-photo-film');
+        yield MenuItem::linkTo(SiteSettingCrudController::class, 'Настройки сайта', 'fa fa-gear');
 
-        yield MenuItem::section('Медиа');
-        yield MenuItem::linkTo(MediaItemCrudController::class, 'Загруженные файлы', 'fa fa-photo-film');
-
-        yield MenuItem::section('Настройки сайта');
-        yield MenuItem::linkTo(SiteSettingCrudController::class, 'Промо-полоса в шапке', 'fa fa-bullhorn');
+        yield MenuItem::section('Полный список');
+        yield MenuItem::linkTo(TextBlockCrudController::class, 'Все тексты', 'fa fa-list');
+        yield MenuItem::linkTo(ImageBlockCrudController::class, 'Все картинки', 'fa fa-images');
 
         yield MenuItem::section('');
         yield MenuItem::linkTo(UserCrudController::class, 'Пользователи', 'fa fa-user');
         yield MenuItem::linkToLogout('Выйти', 'fa fa-sign-out');
-        // Open the public site (outside our app's base path).
         yield MenuItem::linkToUrl('Открыть сайт', 'fa fa-external-link', '/')->setLinkTarget('_blank');
     }
 }

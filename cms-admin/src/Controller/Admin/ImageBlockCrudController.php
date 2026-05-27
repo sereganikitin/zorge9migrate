@@ -3,17 +3,24 @@
 namespace App\Controller\Admin;
 
 use App\Entity\ImageBlock;
+use App\Service\PageLabels;
+use Doctrine\ORM\QueryBuilder;
+use EasyCorp\Bundle\EasyAdminBundle\Collection\FieldCollection;
+use EasyCorp\Bundle\EasyAdminBundle\Collection\FilterCollection;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
-use EasyCorp\Bundle\EasyAdminBundle\Config\Filters;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
+use EasyCorp\Bundle\EasyAdminBundle\Dto\EntityDto;
+use EasyCorp\Bundle\EasyAdminBundle\Dto\SearchDto;
 use EasyCorp\Bundle\EasyAdminBundle\Field\AssociationField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\DateTimeField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IdField;
+use EasyCorp\Bundle\EasyAdminBundle\Field\ImageField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
-use EasyCorp\Bundle\EasyAdminBundle\Filter\TextFilter;
 
 class ImageBlockCrudController extends AbstractCrudController
 {
+    public function __construct(private readonly PageLabels $pages) {}
+
     public static function getEntityFqcn(): string
     {
         return ImageBlock::class;
@@ -21,33 +28,77 @@ class ImageBlockCrudController extends AbstractCrudController
 
     public function configureCrud(Crud $crud): Crud
     {
+        $page = $this->getCurrentPageFilter();
+        $titlePlural = $page === null
+            ? 'Картинки лендинга'
+            : 'Картинки — ' . $this->pages->humanLabel($page);
+
         return $crud
             ->setEntityLabelInSingular('Картинка')
-            ->setEntityLabelInPlural('Картинки лендинга')
-            ->setDefaultSort(['pagePath' => 'ASC', 'blockKey' => 'ASC'])
-            ->setSearchFields(['pagePath', 'blockKey', 'label']);
+            ->setEntityLabelInPlural($titlePlural)
+            ->setPageTitle(Crud::PAGE_INDEX, $titlePlural)
+            ->setDefaultSort(['pagePath' => 'ASC', 'id' => 'ASC'])
+            ->setSearchFields(['blockKey', 'label', 'defaultSrc'])
+            ->setPaginatorPageSize(30);
     }
 
-    public function configureFilters(Filters $filters): Filters
+    public function createIndexQueryBuilder(SearchDto $searchDto, EntityDto $entityDto, FieldCollection $fields, FilterCollection $filters): QueryBuilder
     {
-        return $filters
-            ->add(TextFilter::new('pagePath', 'Страница'))
-            ->add(TextFilter::new('blockKey', 'Ключ блока'));
+        $qb = parent::createIndexQueryBuilder($searchDto, $entityDto, $fields, $filters);
+        $page = $this->getCurrentPageFilter();
+        if ($page !== null) {
+            $qb->andWhere('entity.pagePath = :pf')->setParameter('pf', $page);
+        }
+        return $qb;
+    }
+
+    private function getCurrentPageFilter(): ?string
+    {
+        $req = $this->container->get('request_stack')->getCurrentRequest();
+        return $req && $req->query->has('page_filter') ? (string) $req->query->get('page_filter') : null;
     }
 
     public function configureFields(string $pageName): iterable
     {
-        yield IdField::new('id')->hideOnForm();
-        yield TextField::new('pagePath', 'Страница');
-        yield TextField::new('blockKey', 'Ключ');
-        yield TextField::new('label', 'Описание')->hideOnIndex();
-        yield TextField::new('defaultSrc', 'Исходный путь')
-            ->setHelp('Что было в оригинальной вёрстке. Только для справки.')
+        if ($pageName === Crud::PAGE_INDEX) {
+            // Visual-first index: thumbnail + page + label.
+            yield ImageField::new('defaultSrc', 'Превью')
+                ->setBasePath('') // src already starts with /
+                ->formatValue(function ($value, $entity) {
+                    /** @var ImageBlock $entity */
+                    $media = $entity->getMedia();
+                    return $media && $media->getFilename()
+                        ? '/cms-admin/uploads/media/' . $media->getFilename()
+                        : (string) $entity->getDefaultSrc();
+                });
+            yield TextField::new('pagePath', 'Страница')
+                ->formatValue(fn($v) => $this->pages->humanLabel((string) $v));
+            yield TextField::new('label', 'Что это');
+            yield AssociationField::new('media', 'Заменено?')
+                ->formatValue(fn($v, $entity) => $entity->getMedia() ? 'да' : '')
+                ->setColumns(1);
+            return;
+        }
+
+        // Form view
+        yield IdField::new('id')->hideOnForm()->onlyOnDetail();
+        yield TextField::new('pagePath', 'Страница')
+            ->formatValue(fn($v) => $this->pages->humanLabel((string) $v))
+            ->setFormTypeOption('disabled', true);
+        yield TextField::new('label', 'Описание блока');
+        yield TextField::new('blockKey', 'Внутренний ключ')
             ->setFormTypeOption('disabled', true)
-            ->hideOnIndex();
+            ->onlyOnDetail();
+        yield ImageField::new('defaultSrc', 'Исходная картинка')
+            ->setBasePath('')
+            ->setFormTypeOption('disabled', true)
+            ->hideOnDetail();
+        yield TextField::new('defaultSrc', 'Исходный путь')
+            ->setFormTypeOption('disabled', true)
+            ->onlyOnDetail();
         yield AssociationField::new('media', 'Картинка для замены')
-            ->setHelp('Выберите файл из медиа-библиотеки. Очистите, чтобы вернуть исходную.');
-        yield TextField::new('alt', 'Alt-текст')->hideOnIndex();
+            ->setHelp('Выберите файл из медиа-библиотеки. Очистите — вернётся оригинальная.');
+        yield TextField::new('alt', 'Alt-текст (для SEO/доступности)');
         yield DateTimeField::new('updatedAt', 'Изменён')->hideOnForm();
     }
 }
