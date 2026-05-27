@@ -114,6 +114,35 @@ server {
         add_header Cache-Control private;
     }
 
+    # ───────── Symfony CMS admin (EasyAdmin) at /cms-admin/ ─────────
+    # Mounted via symlink:
+    #   ln -sfn /var/www/cms-admin/public /var/www/old.zorge9.com/htdocs/cms-admin
+    # Symfony's front controller lives at /var/www/cms-admin/public/index.php.
+    location ~ ^/cms-admin/index\.php(/|$) {
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param DOCUMENT_ROOT $document_root;
+        fastcgi_param REQUEST_METHOD $request_method;
+        fastcgi_param QUERY_STRING $query_string;
+        fastcgi_param CONTENT_TYPE $content_type;
+        fastcgi_param CONTENT_LENGTH $content_length;
+        fastcgi_pass php-handler_old.zorge9;
+    }
+    location /cms-admin/ {
+        try_files $uri $uri/ /cms-admin/index.php$is_args$args;
+    }
+
+    # ───────── Landing pages routed through the CMS render middleware ─────────
+    # _cms-render.php reads the static HTML, applies TextBlock/ImageBlock
+    # overrides from the cms_admin DB, and streams the result. Wolf-served
+    # pages (everything not listed here) keep going through location / below.
+    location = / {
+        rewrite ^ /_cms-render.php?page= last;
+    }
+    location ~ ^/(apartments|improvement|infrastructure|investment|location|management|parking|penthouses|privacy-policy|request|services|style)(?:/(?:index\.html)?)?$ {
+        rewrite ^/([^/]+).*$ /_cms-render.php?page=$1 last;
+    }
+
     location / {
         try_files $uri $uri/ @wolf;
     }
