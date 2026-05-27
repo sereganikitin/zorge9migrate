@@ -19,7 +19,7 @@ security:
             form_login:
                 login_path: app_login
                 check_path: app_login
-                default_target_path: admin_text_block_index
+                default_target_path: admin
                 username_parameter: _username
                 password_parameter: _password
                 enable_csrf: true

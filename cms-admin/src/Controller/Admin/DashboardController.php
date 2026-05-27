@@ -29,12 +29,11 @@ class DashboardController extends AbstractDashboardController
     #[Route('/', name: 'admin')]
     public function index(): Response
     {
-        // Default landing in admin: list of text blocks. AdminUrlGenerator
-        // needs both dashboard and CRUD controller to build the URL.
-        return $this->redirect($this->urls
-            ->setDashboard(self::class)
-            ->setController(TextBlockCrudController::class)
-            ->generateUrl());
+        // Default landing in admin: open the first non-empty section
+        // (so /cms-admin/ goes to the section editor instead of CRUD).
+        $nonEmpty = $this->inventory->nonEmptyOrdered($this->sections->orderedIds());
+        $first = $nonEmpty[0] ?? 'intro';
+        return $this->redirectToRoute('section_editor', ['section' => $first]);
     }
 
     public function configureDashboard(): Dashboard
@@ -58,15 +57,18 @@ class DashboardController extends AbstractDashboardController
     {
         yield MenuItem::section('Секции лендинга');
         // One link per non-empty section → custom combined editor page
-        // (texts + images on one page).
+        // (texts + images on one page). linkToUrl with the direct path
+        // avoids EasyAdmin's URL-routing wrapper, so the browser goes
+        // straight to our SectionEditorController instead of bouncing
+        // back through the dashboard.
         $nonEmpty = $this->inventory->nonEmptyOrdered($this->sections->orderedIds());
         foreach ($nonEmpty as $sectionId) {
             $label = $this->sections->humanLabel($sectionId);
             $icon = $this->sections->icon($sectionId);
-            yield MenuItem::linkToRoute($label, $icon, 'section_editor', ['section' => $sectionId]);
+            yield MenuItem::linkToUrl($label, $icon, '/cms-admin/section/' . $sectionId);
         }
         if ($this->inventory->hasUnknown()) {
-            yield MenuItem::linkToRoute('Прочее', 'fa fa-folder', 'section_editor', ['section' => 'unknown']);
+            yield MenuItem::linkToUrl('Прочее', 'fa fa-folder', '/cms-admin/section/unknown');
         }
 
         yield MenuItem::section('Файлы');
