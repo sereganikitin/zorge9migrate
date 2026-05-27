@@ -13,3 +13,6 @@
 
 # Auto-generated manifest from annotate_landing.py — regenerated from site/ as needed.
 /bin/landing-manifest.json
+
+# Python bytecode (from running the annotator locally).
+/bin/__pycache__/
