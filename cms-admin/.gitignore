@@ -10,3 +10,6 @@
 
 # Uploaded files: stored only on the server, not in git.
 /public/uploads/
+
+# Auto-generated manifest from annotate_landing.py — regenerated from site/ as needed.
+/bin/landing-manifest.json
