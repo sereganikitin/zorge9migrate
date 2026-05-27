@@ -52,7 +52,17 @@
         .images-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
         .image-block { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 12px; }
         .image-block .preview { width: 100%; aspect-ratio: 4/3; background: #0a0a0a; border-radius: 4px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        .image-block .preview { position: relative; }
         .image-block .preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .image-block .preview .download-current {
+            position: absolute; top: 6px; right: 6px;
+            background: rgba(20,20,20,.7); color: #fff; padding: 4px 8px;
+            border-radius: 3px; font-size: 11px; text-decoration: none;
+            display: inline-flex; align-items: center; gap: 5px; opacity: 0; transition: opacity .15s;
+        }
+        .image-block .preview:hover .download-current { opacity: 1; }
+        .image-block .download-original { display: inline-block; margin-top: 6px; font-size: 11px; color: var(--accent); text-decoration: none; }
+        .image-block .download-original:hover { text-decoration: underline; }
         .image-block .label { font-weight: 500; margin: 8px 0 4px; }
         .image-block .where { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
         .image-block input[type=file] { width: 100%; font-size: 12px; margin-top: 6px; }
@@ -164,9 +174,17 @@
                     {% for ib in images %}
                         {% set has_override = ib.media is not null %}
                         {% set src = has_override ? '/cms-admin/uploads/media/' ~ ib.media.filename : ib.defaultSrc %}
+                        {% set download_name = has_override
+                            ? (ib.media.originalName ?: ib.media.filename)
+                            : (ib.defaultSrc|split('/')|last) %}
                         {% set other_sections = ib.sections|filter(s => s != section_id and s != 'unknown') %}
                         <div class="image-block">
-                            <div class="preview"><img src="{{ src }}" alt="{{ ib.alt ?: ib.label }}"></div>
+                            <div class="preview">
+                                <img src="{{ src }}" alt="{{ ib.alt ?: ib.label }}">
+                                <a class="download-current" href="{{ src }}" download="{{ download_name }}" title="Скачать текущее фото">
+                                    <i class="fa fa-download"></i> Скачать
+                                </a>
+                            </div>
                             <div class="label">{{ ib.label }}{% if has_override %} <span class="replaced">(заменено)</span>{% endif %}</div>
                             {% if other_sections is not empty %}
                                 <div class="where">также в: {% for s in other_sections %}{{ sections_meta[s].label ?? s }}{{ not loop.last ? ', ' : '' }}{% endfor %}</div>
@@ -174,6 +192,9 @@
                             <input type="file" name="image_file[{{ ib.id }}]" accept="image/*">
                             <input type="text" name="image_alt[{{ ib.id }}]" value="{{ ib.alt ?: '' }}" placeholder="alt-текст (для SEO/доступности)">
                             {% if has_override %}
+                                <a class="download-original" href="{{ ib.defaultSrc }}" download="{{ ib.defaultSrc|split('/')|last }}">
+                                    <i class="fa fa-download"></i> Скачать исходную (до замены)
+                                </a>
                                 <div class="controls">
                                     <label>
                                         <input type="checkbox" name="image_reset[{{ ib.id }}]" value="1">
