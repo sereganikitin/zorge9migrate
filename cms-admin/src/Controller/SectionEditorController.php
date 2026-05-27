@@ -91,12 +91,12 @@ class SectionEditorController extends AbstractController
             if (!$file instanceof UploadedFile) continue;
             $ib = $imageRepo->find((int) $id);
             if (!$ib) continue;
-            $newName = $this->moveUploadedFile($file);
+            $meta = $this->moveUploadedFile($file);
             $mi = (new MediaItem())
-                ->setFilename($newName)
-                ->setOriginalName($file->getClientOriginalName())
-                ->setMimeType($file->getMimeType())
-                ->setSizeBytes($file->getSize())
+                ->setFilename($meta['filename'])
+                ->setOriginalName($meta['original_name'])
+                ->setMimeType($meta['mime_type'])
+                ->setSizeBytes($meta['size'])
                 ->setAlt($imageAltInput[$id] ?? null);
             $this->em->persist($mi);
             $ib->setMedia($mi);
@@ -133,18 +133,35 @@ class SectionEditorController extends AbstractController
         return $this->redirectToRoute('section_editor', ['section' => $section]);
     }
 
-    private function moveUploadedFile(UploadedFile $file): string
+    /**
+     * Move the uploaded file into the media directory and return the metadata
+     * that the MediaItem entity needs.
+     *
+     * Metadata is captured BEFORE move(), because after move() the UploadedFile
+     * object still references the temp path which no longer exists, and any
+     * subsequent call (getMimeType / getSize / …) throws.
+     *
+     * @return array{filename:string, original_name:string, mime_type:string, size:int}
+     */
+    private function moveUploadedFile(UploadedFile $file): array
     {
         $base = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
         $base = preg_replace('/[^a-zA-Z0-9_.-]+/', '_', $base) ?: 'upload';
         $ext = $file->guessExtension() ?: $file->getClientOriginalExtension() ?: 'bin';
         $newName = sprintf('%s-%s.%s', $base, bin2hex(random_bytes(4)), $ext);
 
+        $meta = [
+            'filename'      => $newName,
+            'original_name' => $file->getClientOriginalName(),
+            'mime_type'     => $file->getMimeType(),
+            'size'          => (int) $file->getSize(),
+        ];
+
         if (!is_dir($this->uploadsDir)) {
             mkdir($this->uploadsDir, 0775, true);
         }
         $file->move($this->uploadsDir, $newName);
-        return $newName;
+        return $meta;
     }
 
     /** @return list<TextBlock> */
