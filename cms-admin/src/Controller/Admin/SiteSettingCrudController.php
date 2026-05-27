@@ -23,7 +23,14 @@ class SiteSettingCrudController extends AbstractCrudController
             ->setEntityLabelInSingular('Настройка')
             ->setEntityLabelInPlural('Настройки сайта')
             ->setDefaultSort(['name' => 'ASC'])
-            ->setSearchFields(['name', 'label', 'value']);
+            ->setSearchFields(['name', 'label', 'value'])
+            ->setHelp(
+                Crud::PAGE_INDEX,
+                'Глобальные настройки сайта в формате <code>имя → значение</code>. '
+                . 'Например, для промо-полосы в шапке нужно три настройки: '
+                . '<code>promo.enabled</code> (1/0), <code>promo.text</code>, <code>promo.link</code>. '
+                . 'Тексты страниц редактируются <strong>не здесь</strong>, а через «Главная → Тексты», «Локация → Тексты» и т.д.'
+            );
     }
 
     public function configureFields(string $pageName): iterable

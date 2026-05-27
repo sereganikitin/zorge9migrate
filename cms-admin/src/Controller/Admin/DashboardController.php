@@ -71,10 +71,6 @@ class DashboardController extends AbstractDashboardController
         yield MenuItem::linkTo(MediaItemCrudController::class, 'Медиа-библиотека', 'fa fa-photo-film');
         yield MenuItem::linkTo(SiteSettingCrudController::class, 'Настройки сайта', 'fa fa-gear');
 
-        yield MenuItem::section('Полный список');
-        yield MenuItem::linkTo(TextBlockCrudController::class, 'Все тексты', 'fa fa-list');
-        yield MenuItem::linkTo(ImageBlockCrudController::class, 'Все картинки', 'fa fa-images');
-
         yield MenuItem::section('');
         yield MenuItem::linkTo(UserCrudController::class, 'Пользователи', 'fa fa-user');
         yield MenuItem::linkToLogout('Выйти', 'fa fa-sign-out');

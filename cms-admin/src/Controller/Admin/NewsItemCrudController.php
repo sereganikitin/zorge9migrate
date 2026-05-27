@@ -26,7 +26,14 @@ class NewsItemCrudController extends AbstractCrudController
             ->setEntityLabelInSingular('Новость / акция')
             ->setEntityLabelInPlural('Новости / акции')
             ->setDefaultSort(['publishedAt' => 'DESC'])
-            ->setSearchFields(['slug', 'title', 'excerpt', 'body']);
+            ->setSearchFields(['slug', 'title', 'excerpt', 'body'])
+            ->setHelp(
+                Crud::PAGE_INDEX,
+                'Здесь собираются <strong>отдельные статьи</strong> — каждая опубликованная новость '
+                . 'появится на сайте по адресу <code>/news/{slug}</code>. '
+                . 'Чтобы поменять промо-блоки на самой главной (рассрочка, спецпредложения и т.п.) '
+                . '— это <strong>тексты лендинга</strong>: меню «Главная → Тексты».'
+            );
     }
 
     public function configureFields(string $pageName): iterable

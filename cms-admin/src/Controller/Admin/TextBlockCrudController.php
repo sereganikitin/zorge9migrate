@@ -65,21 +65,25 @@ class TextBlockCrudController extends AbstractCrudController
     public function configureFields(string $pageName): iterable
     {
         if ($pageName === Crud::PAGE_INDEX) {
-            // Visual-first index: human page name + label + current text preview.
-            yield TextField::new('pagePath', 'Страница')
-                ->formatValue(fn($v) => $this->pages->humanLabel((string) $v))
-                ->setColumns(2);
-            yield TextField::new('label', 'Что это');
+            $filtered = $this->getCurrentPageFilter() !== null;
+            // When user is already inside a per-page section, hide the "Страница"
+            // column — it would repeat the same value on every row.
+            if (!$filtered) {
+                yield TextField::new('pagePath', 'Страница')
+                    ->formatValue(fn($v) => $this->pages->humanLabel((string) $v))
+                    ->setColumns(2);
+            }
+            yield TextField::new('label', 'Что это')->setColumns($filtered ? 3 : 2);
             yield TextareaField::new('value', 'Текст сейчас')
                 ->formatValue(function ($value, $entity) {
                     /** @var TextBlock $entity */
                     $effective = $entity->getValue() ?? $entity->getDefaultValue() ?? '';
                     $plain = trim((string) preg_replace('/\s+/u', ' ', strip_tags($effective)));
-                    return mb_strlen($plain) > 180
-                        ? mb_substr($plain, 0, 180) . '…'
+                    return mb_strlen($plain) > 220
+                        ? mb_substr($plain, 0, 220) . '…'
                         : $plain;
                 })
-                ->setColumns(8);
+                ->setColumns($filtered ? 9 : 8);
             return;
         }
 

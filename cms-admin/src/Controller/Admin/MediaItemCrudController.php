@@ -25,7 +25,13 @@ class MediaItemCrudController extends AbstractCrudController
             ->setEntityLabelInSingular('Файл')
             ->setEntityLabelInPlural('Медиа-библиотека')
             ->setDefaultSort(['uploadedAt' => 'DESC'])
-            ->setSearchFields(['originalName', 'filename', 'alt']);
+            ->setSearchFields(['originalName', 'filename', 'alt'])
+            ->setHelp(
+                Crud::PAGE_INDEX,
+                'Сюда загружаются файлы для замены картинок на лендинге. '
+                . 'После загрузки откройте нужную «Картинку лендинга» (например <em>Главная → Картинки</em>) '
+                . 'и выберите загруженный файл в поле «Картинка для замены».'
+            );
     }
 
     public function configureFields(string $pageName): iterable

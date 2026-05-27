@@ -61,9 +61,9 @@ class ImageBlockCrudController extends AbstractCrudController
     public function configureFields(string $pageName): iterable
     {
         if ($pageName === Crud::PAGE_INDEX) {
-            // Visual-first index: thumbnail + page + label.
+            $filtered = $this->getCurrentPageFilter() !== null;
             yield ImageField::new('defaultSrc', 'Превью')
-                ->setBasePath('') // src already starts with /
+                ->setBasePath('')
                 ->formatValue(function ($value, $entity) {
                     /** @var ImageBlock $entity */
                     $media = $entity->getMedia();
@@ -71,12 +71,13 @@ class ImageBlockCrudController extends AbstractCrudController
                         ? '/cms-admin/uploads/media/' . $media->getFilename()
                         : (string) $entity->getDefaultSrc();
                 });
-            yield TextField::new('pagePath', 'Страница')
-                ->formatValue(fn($v) => $this->pages->humanLabel((string) $v));
+            if (!$filtered) {
+                yield TextField::new('pagePath', 'Страница')
+                    ->formatValue(fn($v) => $this->pages->humanLabel((string) $v));
+            }
             yield TextField::new('label', 'Что это');
             yield AssociationField::new('media', 'Заменено?')
-                ->formatValue(fn($v, $entity) => $entity->getMedia() ? 'да' : '')
-                ->setColumns(1);
+                ->formatValue(fn($v, $entity) => $entity->getMedia() ? 'да' : '');
             return;
         }
 
