@@ -3,7 +3,7 @@
 namespace App\Controller\Admin;
 
 use App\Entity\TextBlock;
-use App\Service\PageLabels;
+use App\Service\SectionLabels;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
 use EasyCorp\Bundle\EasyAdminBundle\Collection\FieldCollection;
@@ -19,10 +19,8 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 
 class TextBlockCrudController extends AbstractCrudController
 {
-    public const FILTER_SHARED = '__shared__';
-
     public function __construct(
-        private readonly PageLabels $pages,
+        private readonly SectionLabels $sections,
         private readonly EntityManagerInterface $em,
     ) {}
 
@@ -33,12 +31,10 @@ class TextBlockCrudController extends AbstractCrudController
 
     public function configureCrud(Crud $crud): Crud
     {
-        $page = $this->getCurrentPageFilter();
-        $titlePlural = match (true) {
-            $page === self::FILTER_SHARED => 'Тексты — Общие для всех страниц',
-            $page === null                => 'Тексты лендинга',
-            default                       => 'Тексты — Только на: ' . $this->pages->humanLabel($page),
-        };
+        $section = $this->getSectionFilter();
+        $titlePlural = $section === null
+            ? 'Тексты лендинга'
+            : 'Тексты — ' . $this->sections->humanLabel($section);
 
         return $crud
             ->setEntityLabelInSingular('Текстовый блок')
@@ -46,71 +42,68 @@ class TextBlockCrudController extends AbstractCrudController
             ->setPageTitle(Crud::PAGE_INDEX, $titlePlural)
             ->setDefaultSort(['id' => 'ASC'])
             ->setSearchFields(['blockKey', 'label', 'defaultValue', 'value'])
-            ->setHelp(Crud::PAGE_INDEX, $this->indexHelp($page))
+            ->setHelp(Crud::PAGE_INDEX, $this->indexHelp($section))
             ->setPaginatorPageSize(40);
     }
 
     public function createIndexQueryBuilder(SearchDto $searchDto, EntityDto $entityDto, FieldCollection $fields, FilterCollection $filters): QueryBuilder
     {
         $qb = parent::createIndexQueryBuilder($searchDto, $entityDto, $fields, $filters);
-        $page = $this->getCurrentPageFilter();
-        if ($page === null) {
+        $section = $this->getSectionFilter();
+        if ($section === null) {
             return $qb;
         }
-        $ids = $this->matchingIds($page);
-        // andWhere with empty IN-list — return 0 rows safely.
+        $ids = $this->matchingIds($section);
         if ($ids === []) {
             $qb->andWhere('1 = 0');
             return $qb;
         }
-        $qb->andWhere('entity.id IN (:pf_ids)')->setParameter('pf_ids', $ids);
+        $qb->andWhere('entity.id IN (:section_ids)')->setParameter('section_ids', $ids);
         return $qb;
     }
 
     /** @return list<int> */
-    private function matchingIds(string $filter): array
+    private function matchingIds(string $section): array
     {
         $conn = $this->em->getConnection();
-        if ($filter === self::FILTER_SHARED) {
-            $sql = 'SELECT id FROM text_block WHERE JSON_LENGTH(page_paths) > 1';
+        if ($section === 'unknown') {
+            // Either explicitly marked unknown OR no section recorded.
+            $sql = 'SELECT id FROM text_block WHERE JSON_CONTAINS(sections, \'"unknown"\') OR JSON_LENGTH(sections) = 0';
             return array_map('intval', $conn->fetchFirstColumn($sql));
         }
-        // Only-on-this-page: exactly one entry in page_paths and that entry == filter.
-        $sql = 'SELECT id FROM text_block WHERE JSON_LENGTH(page_paths) = 1 AND JSON_CONTAINS(page_paths, JSON_QUOTE(:p))';
-        return array_map('intval', $conn->fetchFirstColumn($sql, ['p' => $filter]));
+        $sql = 'SELECT id FROM text_block WHERE JSON_CONTAINS(sections, JSON_QUOTE(:s))';
+        return array_map('intval', $conn->fetchFirstColumn($sql, ['s' => $section]));
     }
 
-    private function getCurrentPageFilter(): ?string
+    private function getSectionFilter(): ?string
     {
         $req = $this->container->get('request_stack')->getCurrentRequest();
-        return $req && $req->query->has('page_filter') ? (string) $req->query->get('page_filter') : null;
+        return $req && $req->query->has('section_filter') ? (string) $req->query->get('section_filter') : null;
     }
 
-    private function indexHelp(?string $page): string
+    private function indexHelp(?string $section): string
     {
-        if ($page === self::FILTER_SHARED) {
-            return 'Тексты, которые встречаются <strong>на нескольких страницах</strong> '
-                . '(шапка, навигация, футер, общие секции). Изменение применится сразу на всех страницах.';
+        if ($section === null) {
+            return 'Все тексты лендинга. Выбирайте раздел в боковом меню чтобы видеть только нужную секцию.';
         }
-        if ($page === null) {
-            return 'Все тексты лендинга — без фильтра. Чтобы видеть только своё, выбирайте раздел в боковом меню.';
+        if ($section === 'unknown') {
+            return 'Тексты, которые не удалось автоматически отнести к одной из известных секций — '
+                . 'это всякие модалки, всплывающие подсказки и подобные элементы.';
         }
-        $label = $this->pages->humanLabel($page);
-        return sprintf('Тексты, которые есть <strong>только</strong> на странице «%s». '
-            . 'Общие блоки смотрите в разделе «Общие для всех страниц».', $label);
+        return sprintf(
+            'Все тексты секции «%s». В колонке «Где ещё» показано, если этот же текст '
+            . 'встречается в других секциях — правка применится во всех местах сразу.',
+            $this->sections->humanLabel($section)
+        );
     }
 
     public function configureFields(string $pageName): iterable
     {
-        $filtered = $this->getCurrentPageFilter() !== null;
+        $section = $this->getSectionFilter();
+        $filtered = $section !== null;
 
         if ($pageName === Crud::PAGE_INDEX) {
-            if (!$filtered) {
-                yield TextField::new('pagePathsLabel', 'Где')
-                    ->formatValue(fn($v, $entity) => $this->renderPagesCell($entity->getPagePaths()))
-                    ->setColumns(2);
-            }
-            yield TextField::new('label', 'Что это')->setColumns($filtered ? 3 : 3);
+            yield TextField::new('label', 'Что это')->setColumns(4);
             yield TextareaField::new('value', 'Текст сейчас')
                 ->formatValue(function ($value, $entity) {
                     /** @var TextBlock $entity */
@@ -120,16 +113,19 @@ class TextBlockCrudController extends AbstractCrudController
                         ? mb_substr($plain, 0, 220) . '…'
                         : $plain;
                 })
-                ->setColumns($filtered ? 9 : 7);
+                ->setColumns(7);
+            yield TextField::new('sectionsLabel', 'Где ещё')
+                ->formatValue(fn($v, $entity) => $this->renderSecondarySections($entity->getSections(), $section))
+                ->setColumns(1);
             return;
         }
 
         // Form view
         yield IdField::new('id')->hideOnForm()->onlyOnDetail();
-        yield TextField::new('pagePathsLabel', 'Где встречается')
-            ->formatValue(fn($v, $entity) => $this->renderPagesCell($entity->getPagePaths()))
-            ->setFormTypeOption('disabled', true);
         yield TextField::new('label', 'Описание блока');
+        yield TextField::new('sectionsLabel', 'В каких секциях')
+            ->formatValue(fn($v, $entity) => $this->renderAllSections($entity->getSections()))
+            ->setFormTypeOption('disabled', true);
         yield TextField::new('blockKey', 'Внутренний ключ')
             ->setFormTypeOption('disabled', true)
             ->onlyOnDetail();
@@ -143,12 +139,24 @@ class TextBlockCrudController extends AbstractCrudController
         yield DateTimeField::new('updatedAt', 'Изменён')->hideOnForm();
     }
 
-    /** @param list<string> $paths */
-    private function renderPagesCell(array $paths): string
+    /** @param list<string> $sections */
+    private function renderSecondarySections(array $sections, ?string $current): string
     {
-        if (count($paths) > 1) {
-            return 'Общий (' . count($paths) . ' стр.)';
+        $others = array_values(array_filter($sections, fn($s) => $s !== $current));
+        if (!$others) {
+            return '';
         }
-        return $this->pages->humanLabel($paths[0] ?? '');
+        $labels = array_map(fn($s) => $this->sections->humanLabel($s), $others);
+        return implode(', ', $labels);
+    }
+
+    /** @param list<string> $sections */
+    private function renderAllSections(array $sections): string
+    {
+        if (!$sections) {
+            return '—';
+        }
+        $labels = array_map(fn($s) => $this->sections->humanLabel($s), $sections);
+        return implode(', ', $labels);
     }
 }

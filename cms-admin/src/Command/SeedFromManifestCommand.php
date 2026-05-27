@@ -61,6 +61,8 @@ class SeedFromManifestCommand extends Command
                 continue;
             }
 
+            $sections = is_array($e['sections'] ?? null) ? $e['sections'] : [];
+
             if ($type === 'image') {
                 $defaultSrc = (string) ($e['default_src'] ?? '');
                 if ($defaultSrc === '') {
@@ -74,6 +76,9 @@ class SeedFromManifestCommand extends Command
                     foreach ($pagePaths as $p) {
                         $existing->addPagePath($p);
                     }
+                    foreach ($sections as $s) {
+                        $existing->addSection($s);
+                    }
                     if ($existing->getPagePaths() !== $before) {
                         $stats['img_updated_pages']++;
                     }
@@ -82,7 +87,8 @@ class SeedFromManifestCommand extends Command
                         ->setBlockKey($key)
                         ->setLabel($label)
                         ->setDefaultSrc($defaultSrc)
-                        ->setPagePaths($pagePaths);
+                        ->setPagePaths($pagePaths)
+                        ->setSections($sections);
                     if (!$dry) {
                         $this->em->persist($b);
                     }
@@ -100,6 +106,9 @@ class SeedFromManifestCommand extends Command
                     foreach ($pagePaths as $p) {
                         $existing->addPagePath($p);
                     }
+                    foreach ($sections as $s) {
+                        $existing->addSection($s);
+                    }
                     if ($existing->getPagePaths() !== $before) {
                         $stats['text_updated_pages']++;
                     }
@@ -108,7 +117,8 @@ class SeedFromManifestCommand extends Command
                         ->setBlockKey($key)
                         ->setLabel($label)
                         ->setDefaultValue($defaultValue)
-                        ->setPagePaths($pagePaths);
+                        ->setPagePaths($pagePaths)
+                        ->setSections($sections);
                     if (!$dry) {
                         $this->em->persist($b);
                     }

@@ -29,6 +29,10 @@ class TextBlock
     #[ORM\Column(type: Types::JSON)]
     private array $pagePaths = [];
 
+    /** @var list<string> Landing sections where this block lives (e.g. "intro", "location", "footer"). */
+    #[ORM\Column(type: Types::JSON, options: ['default' => '[]'])]
+    private array $sections = [];
+
     #[ORM\Column(length: 200, nullable: true)]
     private ?string $label = null;
 
@@ -56,6 +60,18 @@ class TextBlock
     {
         if (!in_array($path, $this->pagePaths, true)) {
             $this->pagePaths[] = $path;
+        }
+        return $this;
+    }
+
+    /** @return list<string> */
+    public function getSections(): array { return $this->sections; }
+    /** @param list<string> $v */
+    public function setSections(array $v): self { $this->sections = array_values(array_unique($v)); return $this; }
+    public function addSection(string $section): self
+    {
+        if ($section !== '' && !in_array($section, $this->sections, true)) {
+            $this->sections[] = $section;
         }
         return $this;
     }

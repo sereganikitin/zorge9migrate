@@ -3,7 +3,7 @@
 namespace App\Controller\Admin;
 
 use App\Entity\ImageBlock;
-use App\Service\PageLabels;
+use App\Service\SectionLabels;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
 use EasyCorp\Bundle\EasyAdminBundle\Collection\FieldCollection;
@@ -20,10 +20,8 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 
 class ImageBlockCrudController extends AbstractCrudController
 {
-    public const FILTER_SHARED = '__shared__';
-
     public function __construct(
-        private readonly PageLabels $pages,
+        private readonly SectionLabels $sections,
         private readonly EntityManagerInterface $em,
     ) {}
 
@@ -34,12 +32,10 @@ class ImageBlockCrudController extends AbstractCrudController
 
     public function configureCrud(Crud $crud): Crud
     {
-        $page = $this->getCurrentPageFilter();
-        $titlePlural = match (true) {
-            $page === self::FILTER_SHARED => 'Картинки — Общие для всех страниц',
-            $page === null                => 'Картинки лендинга',
-            default                       => 'Картинки — Только на: ' . $this->pages->humanLabel($page),
-        };
+        $section = $this->getSectionFilter();
+        $titlePlural = $section === null
+            ? 'Картинки лендинга'
+            : 'Картинки — ' . $this->sections->humanLabel($section);
 
         return $crud
             ->setEntityLabelInSingular('Картинка')
@@ -47,63 +43,61 @@ class ImageBlockCrudController extends AbstractCrudController
             ->setPageTitle(Crud::PAGE_INDEX, $titlePlural)
             ->setDefaultSort(['id' => 'ASC'])
             ->setSearchFields(['blockKey', 'label', 'defaultSrc'])
-            ->setHelp(Crud::PAGE_INDEX, $this->indexHelp($page))
+            ->setHelp(Crud::PAGE_INDEX, $this->indexHelp($section))
             ->setPaginatorPageSize(30);
     }
 
     public function createIndexQueryBuilder(SearchDto $searchDto, EntityDto $entityDto, FieldCollection $fields, FilterCollection $filters): QueryBuilder
     {
         $qb = parent::createIndexQueryBuilder($searchDto, $entityDto, $fields, $filters);
-        $page = $this->getCurrentPageFilter();
-        if ($page === null) {
+        $section = $this->getSectionFilter();
+        if ($section === null) {
             return $qb;
         }
-        $ids = $this->matchingIds($page);
+        $ids = $this->matchingIds($section);
         if ($ids === []) {
             $qb->andWhere('1 = 0');
             return $qb;
         }
-        $qb->andWhere('entity.id IN (:pf_ids)')->setParameter('pf_ids', $ids);
+        $qb->andWhere('entity.id IN (:section_ids)')->setParameter('section_ids', $ids);
         return $qb;
     }
 
     /** @return list<int> */
-    private function matchingIds(string $filter): array
+    private function matchingIds(string $section): array
     {
         $conn = $this->em->getConnection();
-        if ($filter === self::FILTER_SHARED) {
-            return array_map('intval', $conn->fetchFirstColumn(
-                'SELECT id FROM image_block WHERE JSON_LENGTH(page_paths) > 1'
-            ));
+        if ($section === 'unknown') {
+            $sql = 'SELECT id FROM image_block WHERE JSON_CONTAINS(sections, \'"unknown"\') OR JSON_LENGTH(sections) = 0';
+            return array_map('intval', $conn->fetchFirstColumn($sql));
         }
-        return array_map('intval', $conn->fetchFirstColumn(
-            'SELECT id FROM image_block WHERE JSON_LENGTH(page_paths) = 1 AND JSON_CONTAINS(page_paths, JSON_QUOTE(:p))',
-            ['p' => $filter]
-        ));
+        $sql = 'SELECT id FROM image_block WHERE JSON_CONTAINS(sections, JSON_QUOTE(:s))';
+        return array_map('intval', $conn->fetchFirstColumn($sql, ['s' => $section]));
     }
 
-    private function getCurrentPageFilter(): ?string
+    private function getSectionFilter(): ?string
     {
         $req = $this->container->get('request_stack')->getCurrentRequest();
-        return $req && $req->query->has('page_filter') ? (string) $req->query->get('page_filter') : null;
+        return $req && $req->query->has('section_filter') ? (string) $req->query->get('section_filter') : null;
     }
 
-    private function indexHelp(?string $page): string
+    private function indexHelp(?string $section): string
     {
-        if ($page === self::FILTER_SHARED) {
-            return 'Картинки, которые видны <strong>на нескольких страницах</strong> '
-                . '(логотипы, иконки, общие блоки). Замена применяется ко всем страницам сразу.';
+        if ($section === null) {
+            return 'Все картинки лендинга. Выбирайте раздел в боковом меню для нужной секции.';
         }
-        if ($page === null) {
-            return 'Все картинки лендинга. Чтобы видеть только своё, выбирайте раздел в боковом меню.';
+        if ($section === 'unknown') {
+            return 'Картинки, которые не удалось автоматически отнести к секции (карусели, модалки).';
         }
-        $label = $this->pages->humanLabel($page);
-        return sprintf('Картинки <strong>только</strong> со страницы «%s». Общие смотрите в «Общие для всех страниц».', $label);
+        return sprintf(
+            'Все картинки секции «%s». В колонке «Где ещё» — другие секции, где встречается эта же картинка.',
+            $this->sections->humanLabel($section)
+        );
     }
 
     public function configureFields(string $pageName): iterable
     {
-        $filtered = $this->getCurrentPageFilter() !== null;
+        $section = $this->getSectionFilter();
 
         if ($pageName === Crud::PAGE_INDEX) {
             yield ImageField::new('defaultSrc', 'Превью')
@@ -115,22 +109,20 @@ class ImageBlockCrudController extends AbstractCrudController
                         ? '/cms-admin/uploads/media/' . $media->getFilename()
                         : (string) $entity->getDefaultSrc();
                 });
-            if (!$filtered) {
-                yield TextField::new('pagePathsLabel', 'Где')
-                    ->formatValue(fn($v, $entity) => $this->renderPagesCell($entity->getPagePaths()));
-            }
             yield TextField::new('label', 'Что это');
             yield AssociationField::new('media', 'Заменено?')
                 ->formatValue(fn($v, $entity) => $entity->getMedia() ? 'да' : '');
+            yield TextField::new('sectionsLabel', 'Где ещё')
+                ->formatValue(fn($v, $entity) => $this->renderSecondarySections($entity->getSections(), $section));
             return;
         }
 
         // Form view
         yield IdField::new('id')->hideOnForm()->onlyOnDetail();
-        yield TextField::new('pagePathsLabel', 'Где встречается')
-            ->formatValue(fn($v, $entity) => $this->renderPagesCell($entity->getPagePaths()))
-            ->setFormTypeOption('disabled', true);
         yield TextField::new('label', 'Описание блока');
+        yield TextField::new('sectionsLabel', 'В каких секциях')
+            ->formatValue(fn($v, $entity) => $this->renderAllSections($entity->getSections()))
+            ->setFormTypeOption('disabled', true);
         yield TextField::new('blockKey', 'Внутренний ключ')
             ->setFormTypeOption('disabled', true)
             ->onlyOnDetail();
@@ -147,12 +139,18 @@ class ImageBlockCrudController extends AbstractCrudController
         yield DateTimeField::new('updatedAt', 'Изменён')->hideOnForm();
     }
 
-    /** @param list<string> $paths */
-    private function renderPagesCell(array $paths): string
+    /** @param list<string> $sections */
+    private function renderSecondarySections(array $sections, ?string $current): string
     {
-        if (count($paths) > 1) {
-            return 'Общий (' . count($paths) . ' стр.)';
-        }
-        return $this->pages->humanLabel($paths[0] ?? '');
+        $others = array_values(array_filter($sections, fn($s) => $s !== $current));
+        if (!$others) return '';
+        return implode(', ', array_map(fn($s) => $this->sections->humanLabel($s), $others));
+    }
+
+    /** @param list<string> $sections */
+    private function renderAllSections(array $sections): string
+    {
+        if (!$sections) return '—';
+        return implode(', ', array_map(fn($s) => $this->sections->humanLabel($s), $sections));
     }
 }
