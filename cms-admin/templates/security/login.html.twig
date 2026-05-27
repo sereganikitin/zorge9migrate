@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <title>Вход — Зорге 9 CMS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { background: #0f0f0f; color: #eee; font: 14px/1.4 system-ui, sans-serif; display: grid; place-items: center; min-height: 100vh; margin: 0; }
+        .card { background: #1a1a1a; padding: 32px 36px; border-radius: 8px; box-shadow: 0 12px 40px rgba(0,0,0,.4); width: 320px; }
+        h1 { margin: 0 0 18px; font-size: 20px; font-weight: 500; text-align: center; }
+        label { display: block; font-size: 12px; opacity: .7; margin: 14px 0 4px; }
+        input[type=text], input[type=password] { width: 100%; padding: 10px 12px; background: #0f0f0f; border: 1px solid #333; border-radius: 4px; color: #eee; box-sizing: border-box; font: inherit; }
+        input:focus { outline: none; border-color: #c7a55a; }
+        button { width: 100%; margin-top: 22px; padding: 10px 14px; background: #c7a55a; border: 0; border-radius: 4px; color: #111; font-weight: 600; cursor: pointer; }
+        button:hover { background: #d8b96e; }
+        .err { background: #5b2424; color: #ffd9d9; padding: 10px 12px; border-radius: 4px; margin-bottom: 12px; font-size: 13px; }
+    </style>
+</head>
+<body>
+<form class="card" method="post" action="{{ path('app_login') }}">
+    <h1>Зорге 9 — CMS</h1>
+    {% if error %}<div class="err">{{ error.messageKey|trans(error.messageData, 'security') }}</div>{% endif %}
+    <label for="username">Логин</label>
+    <input type="text" id="username" name="_username" value="{{ last_username }}" autofocus required>
+    <label for="password">Пароль</label>
+    <input type="password" id="password" name="_password" required>
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+    <button type="submit">Войти</button>
+</form>
+</body>
+</html>

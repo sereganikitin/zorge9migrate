@@ -1,0 +1,4 @@
+# Stateful CSRF protection: server-issued token tied to the session.
+# Simpler than the stateless variant — works without extra JS or cookies.
+framework:
+    csrf_protection: true
