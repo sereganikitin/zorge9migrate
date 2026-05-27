@@ -14,27 +14,10 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 #[AsCommand(
     name: 'app:seed-from-manifest',
-    description: 'Load TextBlock + ImageBlock rows from a JSON manifest produced by annotate_landing.py.',
+    description: 'Upsert TextBlock + ImageBlock rows from the annotator manifest. Keys are content-hashed so the same text/image across pages maps to a single row; we just merge page_paths.',
 )]
 class SeedFromManifestCommand extends Command
 {
-    /** Pages we want to manage from CMS. Skip everything else (old site / promo / wolf snapshots). */
-    private const ALLOWED_PAGES = [
-        '',                 // homepage
-        'apartments',
-        'improvement',
-        'infrastructure',
-        'investment',
-        'location',
-        'management',
-        'parking',
-        'penthouses',
-        'privacy-policy',
-        'request',
-        'services',
-        'style',
-    ];
-
     public function __construct(private readonly EntityManagerInterface $em)
     {
         parent::__construct();
@@ -44,7 +27,7 @@ class SeedFromManifestCommand extends Command
     {
         $this
             ->addArgument('manifest', InputArgument::REQUIRED, 'Path to manifest JSON')
-            ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Show counts, do not write');
+            ->addOption('dry-run', null, InputOption::VALUE_NONE);
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -57,78 +40,80 @@ class SeedFromManifestCommand extends Command
             return Command::FAILURE;
         }
 
-        $raw = file_get_contents($path);
-        $entries = json_decode($raw, true);
+        $entries = json_decode((string) file_get_contents($path), true);
         if (!is_array($entries)) {
             $output->writeln("<error>invalid manifest JSON</error>");
             return Command::FAILURE;
         }
 
         $textRepo = $this->em->getRepository(TextBlock::class);
-        $imgRepo = $this->em->getRepository(ImageBlock::class);
+        $imgRepo  = $this->em->getRepository(ImageBlock::class);
 
-        $stats = ['skip_page' => 0, 'skip_placeholder' => 0, 'text_new' => 0, 'text_skip_existing' => 0,
-                  'img_new' => 0, 'img_skip_existing' => 0];
+        $stats = ['text_new' => 0, 'text_updated_pages' => 0, 'img_new' => 0, 'img_updated_pages' => 0, 'skip_placeholder' => 0];
 
         foreach ($entries as $e) {
-            $page = $e['page'] ?? null;
-            if ($page === null || !in_array($page, self::ALLOWED_PAGES, true)) {
-                $stats['skip_page']++;
-                continue;
-            }
-
-            $key = $e['key'] ?? null;
+            $key = (string) ($e['key'] ?? '');
             $type = $e['type'] ?? null;
             $label = mb_substr((string) ($e['label'] ?? ''), 0, 200);
-            if (!$key || !$type) {
+            $pagePaths = is_array($e['page_paths'] ?? null) ? $e['page_paths'] : [];
+
+            if ($key === '' || $type === null) {
                 continue;
             }
 
             if ($type === 'image') {
                 $defaultSrc = (string) ($e['default_src'] ?? '');
-                if ($defaultSrc === '' ||
-                    str_starts_with($defaultSrc, 'data:') ||
-                    str_starts_with($defaultSrc, '<svg') ||
-                    str_contains($defaultSrc, 'http://www.w3.org') ||
-                    str_ends_with($defaultSrc, 'px.gif') ||
-                    str_ends_with($defaultSrc, 'px-2x1.gif')
-                ) {
+                if ($defaultSrc === '') {
                     $stats['skip_placeholder']++;
                     continue;
                 }
-                $existing = $imgRepo->findOneBy(['pagePath' => $page, 'blockKey' => $key]);
+                /** @var ImageBlock|null $existing */
+                $existing = $imgRepo->findOneBy(['blockKey' => $key]);
                 if ($existing) {
-                    $stats['img_skip_existing']++;
-                    continue;
+                    $before = $existing->getPagePaths();
+                    foreach ($pagePaths as $p) {
+                        $existing->addPagePath($p);
+                    }
+                    if ($existing->getPagePaths() !== $before) {
+                        $stats['img_updated_pages']++;
+                    }
+                } else {
+                    $b = (new ImageBlock())
+                        ->setBlockKey($key)
+                        ->setLabel($label)
+                        ->setDefaultSrc($defaultSrc)
+                        ->setPagePaths($pagePaths);
+                    if (!$dry) {
+                        $this->em->persist($b);
+                    }
+                    $stats['img_new']++;
                 }
-                $b = (new ImageBlock())
-                    ->setPagePath($page)
-                    ->setBlockKey($key)
-                    ->setLabel($label)
-                    ->setDefaultSrc($defaultSrc);
-                if (!$dry) {
-                    $this->em->persist($b);
-                }
-                $stats['img_new']++;
                 continue;
             }
 
             if ($type === 'text') {
                 $defaultValue = (string) ($e['default_value'] ?? '');
-                $existing = $textRepo->findOneBy(['pagePath' => $page, 'blockKey' => $key]);
+                /** @var TextBlock|null $existing */
+                $existing = $textRepo->findOneBy(['blockKey' => $key]);
                 if ($existing) {
-                    $stats['text_skip_existing']++;
-                    continue;
+                    $before = $existing->getPagePaths();
+                    foreach ($pagePaths as $p) {
+                        $existing->addPagePath($p);
+                    }
+                    if ($existing->getPagePaths() !== $before) {
+                        $stats['text_updated_pages']++;
+                    }
+                } else {
+                    $b = (new TextBlock())
+                        ->setBlockKey($key)
+                        ->setLabel($label)
+                        ->setDefaultValue($defaultValue)
+                        ->setPagePaths($pagePaths);
+                    if (!$dry) {
+                        $this->em->persist($b);
+                    }
+                    $stats['text_new']++;
                 }
-                $b = (new TextBlock())
-                    ->setPagePath($page)
-                    ->setBlockKey($key)
-                    ->setLabel($label)
-                    ->setDefaultValue($defaultValue);
-                if (!$dry) {
-                    $this->em->persist($b);
-                }
-                $stats['text_new']++;
             }
         }
 

@@ -3,16 +3,15 @@
 namespace App\Entity;
 
 use App\Repository\ImageBlockRepository;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * Editable <img> on a landing page. Identified by (pagePath, blockKey).
- * defaultSrc is the original src in the static HTML.
- * media is the override (uploaded file). If null, the renderer keeps the original src.
+ * One ImageBlock per unique landing image. The same image may appear on
+ * multiple pages; the override (`media`) applies everywhere.
  */
 #[ORM\Entity(repositoryClass: ImageBlockRepository::class)]
 #[ORM\Table(name: 'image_block')]
-#[ORM\UniqueConstraint(name: 'image_block_key', columns: ['page_path', 'block_key'])]
 class ImageBlock
 {
     #[ORM\Id]
@@ -20,11 +19,12 @@ class ImageBlock
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 100)]
-    private string $pagePath;
-
-    #[ORM\Column(length: 120)]
+    #[ORM\Column(length: 120, unique: true)]
     private string $blockKey;
+
+    /** @var list<string> */
+    #[ORM\Column(type: Types::JSON)]
+    private array $pagePaths = [];
 
     #[ORM\Column(length: 200, nullable: true)]
     private ?string $label = null;
@@ -46,11 +46,20 @@ class ImageBlock
 
     public function getId(): ?int { return $this->id; }
 
-    public function getPagePath(): string { return $this->pagePath; }
-    public function setPagePath(string $v): self { $this->pagePath = $v; return $this; }
-
     public function getBlockKey(): string { return $this->blockKey; }
     public function setBlockKey(string $v): self { $this->blockKey = $v; return $this; }
+
+    /** @return list<string> */
+    public function getPagePaths(): array { return $this->pagePaths; }
+    /** @param list<string> $v */
+    public function setPagePaths(array $v): self { $this->pagePaths = array_values(array_unique($v)); return $this; }
+    public function addPagePath(string $path): self
+    {
+        if (!in_array($path, $this->pagePaths, true)) {
+            $this->pagePaths[] = $path;
+        }
+        return $this;
+    }
 
     public function getLabel(): ?string { return $this->label; }
     public function setLabel(?string $v): self { $this->label = $v; return $this; }
@@ -78,6 +87,6 @@ class ImageBlock
 
     public function __toString(): string
     {
-        return ($this->label ?: $this->blockKey) . ' (' . $this->pagePath . ')';
+        return $this->label ?: $this->blockKey;
     }
 }

@@ -13,13 +13,16 @@ class TextBlockRepository extends ServiceEntityRepository
         parent::__construct($registry, TextBlock::class);
     }
 
-    /** @return array<string, string> map of blockKey => effective value for a page */
-    public function effectiveByPage(string $pagePath): array
+    public function findOneByKey(string $blockKey): ?TextBlock
+    {
+        return $this->findOneBy(['blockKey' => $blockKey]);
+    }
+
+    /** @return array<string,string> map of blockKey → effective value (override or default). */
+    public function effectiveAll(): array
     {
         $rows = $this->createQueryBuilder('b')
             ->select('b.blockKey AS k', 'COALESCE(b.value, b.defaultValue) AS v')
-            ->andWhere('b.pagePath = :p')
-            ->setParameter('p', $pagePath)
             ->getQuery()
             ->getArrayResult();
         $out = [];

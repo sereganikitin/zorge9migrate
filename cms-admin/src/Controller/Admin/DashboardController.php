@@ -52,9 +52,19 @@ class DashboardController extends AbstractDashboardController
 
     public function configureMenuItems(): iterable
     {
-        yield MenuItem::section('Страницы лендинга');
+        yield MenuItem::section('Общие блоки');
+        // Blocks that appear on 2+ landing pages — editing them changes
+        // the content on all those pages at once (header, footer, common
+        // sections, logos, etc.).
+        yield MenuItem::subMenu('Общие для всех страниц', 'fa fa-clone')->setSubItems([
+            MenuItem::linkTo(TextBlockCrudController::class, 'Тексты', 'fa fa-pen')
+                ->setQueryParameter('page_filter', TextBlockCrudController::FILTER_SHARED),
+            MenuItem::linkTo(ImageBlockCrudController::class, 'Картинки', 'fa fa-image')
+                ->setQueryParameter('page_filter', ImageBlockCrudController::FILTER_SHARED),
+        ]);
 
-        // One submenu per landing page: тексты + картинки этого раздела.
+        yield MenuItem::section('Уникальные блоки страницы');
+        // Per-page submenus: ONLY blocks that live on a single page.
         foreach ($this->pages->orderedPaths() as $path) {
             $label = $this->pages->humanLabel($path);
             $icon = $this->pages->icon($path);
@@ -66,10 +76,8 @@ class DashboardController extends AbstractDashboardController
             ]);
         }
 
-        yield MenuItem::section('Общее');
-        yield MenuItem::linkTo(NewsItemCrudController::class, 'Новости / акции', 'fa fa-newspaper');
+        yield MenuItem::section('Файлы');
         yield MenuItem::linkTo(MediaItemCrudController::class, 'Медиа-библиотека', 'fa fa-photo-film');
-        yield MenuItem::linkTo(SiteSettingCrudController::class, 'Настройки сайта', 'fa fa-gear');
 
         yield MenuItem::section('');
         yield MenuItem::linkTo(UserCrudController::class, 'Пользователи', 'fa fa-user');

@@ -3,16 +3,17 @@
 namespace App\Entity;
 
 use App\Repository\TextBlockRepository;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * Editable text block on a landing page. Identified by (pagePath, blockKey).
- * defaultValue is what is in the static HTML — never edited from admin.
- * value is the override; if null, the renderer keeps the original.
+ * One TextBlock per unique landing text. The same text may appear on several
+ * landing pages (e.g. header / footer / shared sections); we store it once
+ * and remember which pages it shows on via `pagePaths`. Editing the
+ * `value` therefore changes the text everywhere it is used.
  */
 #[ORM\Entity(repositoryClass: TextBlockRepository::class)]
 #[ORM\Table(name: 'text_block')]
-#[ORM\UniqueConstraint(name: 'text_block_key', columns: ['page_path', 'block_key'])]
 class TextBlock
 {
     #[ORM\Id]
@@ -20,11 +21,13 @@ class TextBlock
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 100)]
-    private string $pagePath;
-
-    #[ORM\Column(length: 120)]
+    /** Globally unique; the renderer matches this against `data-cms-text-key` in the HTML. */
+    #[ORM\Column(length: 120, unique: true)]
     private string $blockKey;
+
+    /** @var list<string> Landing pages where this block appears (e.g. "", "apartments", "location"). */
+    #[ORM\Column(type: Types::JSON)]
+    private array $pagePaths = [];
 
     #[ORM\Column(length: 200, nullable: true)]
     private ?string $label = null;
@@ -42,11 +45,20 @@ class TextBlock
 
     public function getId(): ?int { return $this->id; }
 
-    public function getPagePath(): string { return $this->pagePath; }
-    public function setPagePath(string $v): self { $this->pagePath = $v; return $this; }
-
     public function getBlockKey(): string { return $this->blockKey; }
     public function setBlockKey(string $v): self { $this->blockKey = $v; return $this; }
+
+    /** @return list<string> */
+    public function getPagePaths(): array { return $this->pagePaths; }
+    /** @param list<string> $v */
+    public function setPagePaths(array $v): self { $this->pagePaths = array_values(array_unique($v)); return $this; }
+    public function addPagePath(string $path): self
+    {
+        if (!in_array($path, $this->pagePaths, true)) {
+            $this->pagePaths[] = $path;
+        }
+        return $this;
+    }
 
     public function getLabel(): ?string { return $this->label; }
     public function setLabel(?string $v): self { $this->label = $v; return $this; }
@@ -71,6 +83,6 @@ class TextBlock
 
     public function __toString(): string
     {
-        return ($this->label ?: $this->blockKey) . ' (' . $this->pagePath . ')';
+        return $this->label ?: $this->blockKey;
     }
 }

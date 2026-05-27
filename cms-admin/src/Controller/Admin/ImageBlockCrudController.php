@@ -4,6 +4,7 @@ namespace App\Controller\Admin;
 
 use App\Entity\ImageBlock;
 use App\Service\PageLabels;
+use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
 use EasyCorp\Bundle\EasyAdminBundle\Collection\FieldCollection;
 use EasyCorp\Bundle\EasyAdminBundle\Collection\FilterCollection;
@@ -19,7 +20,12 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 
 class ImageBlockCrudController extends AbstractCrudController
 {
-    public function __construct(private readonly PageLabels $pages) {}
+    public const FILTER_SHARED = '__shared__';
+
+    public function __construct(
+        private readonly PageLabels $pages,
+        private readonly EntityManagerInterface $em,
+    ) {}
 
     public static function getEntityFqcn(): string
     {
@@ -29,16 +35,19 @@ class ImageBlockCrudController extends AbstractCrudController
     public function configureCrud(Crud $crud): Crud
     {
         $page = $this->getCurrentPageFilter();
-        $titlePlural = $page === null
-            ? 'Картинки лендинга'
-            : 'Картинки — ' . $this->pages->humanLabel($page);
+        $titlePlural = match (true) {
+            $page === self::FILTER_SHARED => 'Картинки — Общие для всех страниц',
+            $page === null                => 'Картинки лендинга',
+            default                       => 'Картинки — Только на: ' . $this->pages->humanLabel($page),
+        };
 
         return $crud
             ->setEntityLabelInSingular('Картинка')
             ->setEntityLabelInPlural($titlePlural)
             ->setPageTitle(Crud::PAGE_INDEX, $titlePlural)
-            ->setDefaultSort(['pagePath' => 'ASC', 'id' => 'ASC'])
+            ->setDefaultSort(['id' => 'ASC'])
             ->setSearchFields(['blockKey', 'label', 'defaultSrc'])
+            ->setHelp(Crud::PAGE_INDEX, $this->indexHelp($page))
             ->setPaginatorPageSize(30);
     }
 
@@ -46,10 +55,31 @@ class ImageBlockCrudController extends AbstractCrudController
     {
         $qb = parent::createIndexQueryBuilder($searchDto, $entityDto, $fields, $filters);
         $page = $this->getCurrentPageFilter();
-        if ($page !== null) {
-            $qb->andWhere('entity.pagePath = :pf')->setParameter('pf', $page);
+        if ($page === null) {
+            return $qb;
         }
+        $ids = $this->matchingIds($page);
+        if ($ids === []) {
+            $qb->andWhere('1 = 0');
+            return $qb;
+        }
+        $qb->andWhere('entity.id IN (:pf_ids)')->setParameter('pf_ids', $ids);
         return $qb;
+    }
+
+    /** @return list<int> */
+    private function matchingIds(string $filter): array
+    {
+        $conn = $this->em->getConnection();
+        if ($filter === self::FILTER_SHARED) {
+            return array_map('intval', $conn->fetchFirstColumn(
+                'SELECT id FROM image_block WHERE JSON_LENGTH(page_paths) > 1'
+            ));
+        }
+        return array_map('intval', $conn->fetchFirstColumn(
+            'SELECT id FROM image_block WHERE JSON_LENGTH(page_paths) = 1 AND JSON_CONTAINS(page_paths, JSON_QUOTE(:p))',
+            ['p' => $filter]
+        ));
     }
 
     private function getCurrentPageFilter(): ?string
@@ -58,10 +88,24 @@ class ImageBlockCrudController extends AbstractCrudController
         return $req && $req->query->has('page_filter') ? (string) $req->query->get('page_filter') : null;
     }
 
+    private function indexHelp(?string $page): string
+    {
+        if ($page === self::FILTER_SHARED) {
+            return 'Картинки, которые видны <strong>на нескольких страницах</strong> '
+                . '(логотипы, иконки, общие блоки). Замена применяется ко всем страницам сразу.';
+        }
+        if ($page === null) {
+            return 'Все картинки лендинга. Чтобы видеть только своё, выбирайте раздел в боковом меню.';
+        }
+        $label = $this->pages->humanLabel($page);
+        return sprintf('Картинки <strong>только</strong> со страницы «%s». Общие смотрите в «Общие для всех страниц».', $label);
+    }
+
     public function configureFields(string $pageName): iterable
     {
+        $filtered = $this->getCurrentPageFilter() !== null;
+
         if ($pageName === Crud::PAGE_INDEX) {
-            $filtered = $this->getCurrentPageFilter() !== null;
             yield ImageField::new('defaultSrc', 'Превью')
                 ->setBasePath('')
                 ->formatValue(function ($value, $entity) {
@@ -72,8 +116,8 @@ class ImageBlockCrudController extends AbstractCrudController
                         : (string) $entity->getDefaultSrc();
                 });
             if (!$filtered) {
-                yield TextField::new('pagePath', 'Страница')
-                    ->formatValue(fn($v) => $this->pages->humanLabel((string) $v));
+                yield TextField::new('pagePathsLabel', 'Где')
+                    ->formatValue(fn($v, $entity) => $this->renderPagesCell($entity->getPagePaths()));
             }
             yield TextField::new('label', 'Что это');
             yield AssociationField::new('media', 'Заменено?')
@@ -83,8 +127,8 @@ class ImageBlockCrudController extends AbstractCrudController
 
         // Form view
         yield IdField::new('id')->hideOnForm()->onlyOnDetail();
-        yield TextField::new('pagePath', 'Страница')
-            ->formatValue(fn($v) => $this->pages->humanLabel((string) $v))
+        yield TextField::new('pagePathsLabel', 'Где встречается')
+            ->formatValue(fn($v, $entity) => $this->renderPagesCell($entity->getPagePaths()))
             ->setFormTypeOption('disabled', true);
         yield TextField::new('label', 'Описание блока');
         yield TextField::new('blockKey', 'Внутренний ключ')
@@ -101,5 +145,14 @@ class ImageBlockCrudController extends AbstractCrudController
             ->setHelp('Выберите файл из медиа-библиотеки. Очистите — вернётся оригинальная.');
         yield TextField::new('alt', 'Alt-текст (для SEO/доступности)');
         yield DateTimeField::new('updatedAt', 'Изменён')->hideOnForm();
+    }
+
+    /** @param list<string> $paths */
+    private function renderPagesCell(array $paths): string
+    {
+        if (count($paths) > 1) {
+            return 'Общий (' . count($paths) . ' стр.)';
+        }
+        return $this->pages->humanLabel($paths[0] ?? '');
     }
 }
