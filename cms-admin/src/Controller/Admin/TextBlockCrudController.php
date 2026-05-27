@@ -114,7 +114,7 @@ class TextBlockCrudController extends AbstractCrudController
                         : $plain;
                 })
                 ->setColumns(7);
-            yield TextField::new('sectionsLabel', 'Где ещё')
+            yield \EasyCorp\Bundle\EasyAdminBundle\Field\ArrayField::new('sections', 'Где ещё')
                 ->formatValue(fn($v, $entity) => $this->renderSecondarySections($entity->getSections(), $section))
                 ->setColumns(1);
             return;
@@ -123,7 +123,7 @@ class TextBlockCrudController extends AbstractCrudController
         // Form view
         yield IdField::new('id')->hideOnForm()->onlyOnDetail();
         yield TextField::new('label', 'Описание блока');
-        yield TextField::new('sectionsLabel', 'В каких секциях')
+        yield \EasyCorp\Bundle\EasyAdminBundle\Field\ArrayField::new('sections', 'В каких секциях')
             ->formatValue(fn($v, $entity) => $this->renderAllSections($entity->getSections()))
             ->setFormTypeOption('disabled', true);
         yield TextField::new('blockKey', 'Внутренний ключ')

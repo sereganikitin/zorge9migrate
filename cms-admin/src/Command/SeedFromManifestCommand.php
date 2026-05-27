@@ -76,9 +76,9 @@ class SeedFromManifestCommand extends Command
                     foreach ($pagePaths as $p) {
                         $existing->addPagePath($p);
                     }
-                    foreach ($sections as $s) {
-                        $existing->addSection($s);
-                    }
+                    // Sections are pure derived data — overwrite to match the
+                    // latest annotation, don't merge with stale entries.
+                    $existing->setSections($sections);
                     if ($existing->getPagePaths() !== $before) {
                         $stats['img_updated_pages']++;
                     }
@@ -106,9 +106,7 @@ class SeedFromManifestCommand extends Command
                     foreach ($pagePaths as $p) {
                         $existing->addPagePath($p);
                     }
-                    foreach ($sections as $s) {
-                        $existing->addSection($s);
-                    }
+                    $existing->setSections($sections);
                     if ($existing->getPagePaths() !== $before) {
                         $stats['text_updated_pages']++;
                     }

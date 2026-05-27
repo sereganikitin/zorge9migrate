@@ -3,6 +3,7 @@
 namespace App\Controller\Admin;
 
 use App\Service\PageLabels;
+use App\Service\SectionInventory;
 use App\Service\SectionLabels;
 use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminDashboard;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
@@ -22,6 +23,7 @@ class DashboardController extends AbstractDashboardController
         private readonly AdminUrlGenerator $urls,
         private readonly PageLabels $pages,
         private readonly SectionLabels $sections,
+        private readonly SectionInventory $inventory,
     ) {}
 
     #[Route('/', name: 'admin')]
@@ -55,25 +57,17 @@ class DashboardController extends AbstractDashboardController
     public function configureMenuItems(): iterable
     {
         yield MenuItem::section('Секции лендинга');
-        // One submenu per logical section of the landing — the order
-        // matches roughly how a visitor scrolls through the page.
-        foreach ($this->sections->orderedIds() as $sectionId) {
+        // One link per non-empty section → custom combined editor page
+        // (texts + images on one page).
+        $nonEmpty = $this->inventory->nonEmptyOrdered($this->sections->orderedIds());
+        foreach ($nonEmpty as $sectionId) {
             $label = $this->sections->humanLabel($sectionId);
             $icon = $this->sections->icon($sectionId);
-            yield MenuItem::subMenu($label, $icon)->setSubItems([
-                MenuItem::linkTo(TextBlockCrudController::class, 'Тексты', 'fa fa-pen')
-                    ->setQueryParameter('section_filter', $sectionId),
-                MenuItem::linkTo(ImageBlockCrudController::class, 'Картинки', 'fa fa-image')
-                    ->setQueryParameter('section_filter', $sectionId),
-            ]);
+            yield MenuItem::linkToRoute($label, $icon, 'section_editor', ['section' => $sectionId]);
         }
-        // Catch-all for blocks the annotator could not place into a known section.
-        yield MenuItem::subMenu('Прочее', 'fa fa-folder')->setSubItems([
-            MenuItem::linkTo(TextBlockCrudController::class, 'Тексты', 'fa fa-pen')
-                ->setQueryParameter('section_filter', 'unknown'),
-            MenuItem::linkTo(ImageBlockCrudController::class, 'Картинки', 'fa fa-image')
-                ->setQueryParameter('section_filter', 'unknown'),
-        ]);
+        if ($this->inventory->hasUnknown()) {
+            yield MenuItem::linkToRoute('Прочее', 'fa fa-folder', 'section_editor', ['section' => 'unknown']);
+        }
 
         yield MenuItem::section('Файлы');
         yield MenuItem::linkTo(MediaItemCrudController::class, 'Медиа-библиотека', 'fa fa-photo-film');

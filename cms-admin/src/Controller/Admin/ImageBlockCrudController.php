@@ -112,7 +112,7 @@ class ImageBlockCrudController extends AbstractCrudController
             yield TextField::new('label', 'Что это');
             yield AssociationField::new('media', 'Заменено?')
                 ->formatValue(fn($v, $entity) => $entity->getMedia() ? 'да' : '');
-            yield TextField::new('sectionsLabel', 'Где ещё')
+            yield \EasyCorp\Bundle\EasyAdminBundle\Field\ArrayField::new('sections', 'Где ещё')
                 ->formatValue(fn($v, $entity) => $this->renderSecondarySections($entity->getSections(), $section));
             return;
         }
@@ -120,7 +120,7 @@ class ImageBlockCrudController extends AbstractCrudController
         // Form view
         yield IdField::new('id')->hideOnForm()->onlyOnDetail();
         yield TextField::new('label', 'Описание блока');
-        yield TextField::new('sectionsLabel', 'В каких секциях')
+        yield \EasyCorp\Bundle\EasyAdminBundle\Field\ArrayField::new('sections', 'В каких секциях')
             ->formatValue(fn($v, $entity) => $this->renderAllSections($entity->getSections()))
             ->setFormTypeOption('disabled', true);
         yield TextField::new('blockKey', 'Внутренний ключ')

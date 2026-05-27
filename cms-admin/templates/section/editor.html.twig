@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ru" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8">
+    <title>{{ section_label }} — Зорге 9 CMS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        :root {
+            --bg:#0f0f0f; --panel:#181818; --panel-2:#222; --text:#e5e5e5; --muted:#888;
+            --accent:#c7a55a; --accent-hover:#d8b96e; --border:#2a2a2a; --danger:#b04545;
+            --success:#5b9a5b;
+        }
+        * { box-sizing: border-box; }
+        body { background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, sans-serif; margin: 0; }
+        .layout { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh; }
+        aside { background: var(--panel); border-right: 1px solid var(--border); padding: 18px 0; }
+        aside .brand { padding: 0 20px 16px; font-weight: 600; font-size: 16px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+        aside .group { margin: 14px 0 4px; padding: 0 20px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+        aside .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 20px; color: var(--text); text-decoration: none; border-left: 3px solid transparent; font-size: 14px; }
+        aside .nav-item:hover { background: var(--panel-2); }
+        aside .nav-item.active { background: var(--panel-2); border-left-color: var(--accent); font-weight: 600; }
+        aside .nav-item .count { margin-left: auto; opacity: .55; font-size: 12px; }
+        aside .icon { width: 18px; opacity: .8; text-align: center; }
+
+        main { padding: 24px 32px 80px; max-width: 1200px; }
+        .header-row { display: flex; align-items: baseline; gap: 16px; margin-bottom: 4px; }
+        h1 { font-size: 22px; font-weight: 500; margin: 0; }
+        .subtitle { color: var(--muted); font-size: 13px; }
+        .actions-bar { position: sticky; top: 0; background: var(--bg); padding: 14px 0 10px; margin: 0 0 20px; border-bottom: 1px solid var(--border); z-index: 10; display: flex; gap: 10px; align-items: center; }
+        .btn { padding: 8px 16px; border: 0; border-radius: 4px; cursor: pointer; font: inherit; }
+        .btn-primary { background: var(--accent); color: #111; font-weight: 600; }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
+        .btn-ghost:hover { background: var(--panel); }
+
+        .flash { padding: 10px 14px; border-radius: 4px; margin-bottom: 14px; }
+        .flash.success { background: rgba(91,154,91,.18); color: #c8e6c8; border: 1px solid rgba(91,154,91,.4); }
+
+        .section-title { margin: 28px 0 12px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+
+        .block { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; margin-bottom: 12px; }
+        .block .meta { display: flex; align-items: baseline; gap: 12px; margin-bottom: 8px; }
+        .block .label { font-weight: 500; }
+        .block .where { color: var(--muted); font-size: 12px; }
+        .block .badge-shared { color: var(--accent); font-size: 11px; padding: 2px 6px; border: 1px solid var(--accent); border-radius: 3px; text-transform: uppercase; letter-spacing: .04em; }
+        .block textarea { width: 100%; background: #0a0a0a; color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 10px 12px; font: inherit; resize: vertical; min-height: 70px; }
+        .block textarea:focus { outline: none; border-color: var(--accent); }
+        .block .controls { margin-top: 6px; display: flex; gap: 14px; align-items: center; }
+        .block .controls label { color: var(--muted); font-size: 12px; display: flex; align-items: center; gap: 6px; cursor: pointer; }
+        .block .default { color: var(--muted); font-size: 12px; margin-top: 4px; font-style: italic; }
+
+        .images-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+        .image-block { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 12px; }
+        .image-block .preview { width: 100%; aspect-ratio: 4/3; background: #0a0a0a; border-radius: 4px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        .image-block .preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .image-block .label { font-weight: 500; margin: 8px 0 4px; }
+        .image-block .where { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+        .image-block input[type=file] { width: 100%; font-size: 12px; margin-top: 6px; }
+        .image-block input[type=text] { width: 100%; background: #0a0a0a; color: var(--text); border: 1px solid var(--border); border-radius: 3px; padding: 6px 8px; font-size: 12px; margin-top: 4px; }
+        .image-block .controls { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
+        .image-block .controls label { color: var(--muted); font-size: 12px; display: flex; gap: 6px; align-items: center; }
+        .image-block .replaced { color: var(--accent); font-size: 11px; }
+
+        .nothing { color: var(--muted); padding: 24px 0; font-style: italic; }
+    </style>
+</head>
+<body>
+<div class="layout">
+    <aside>
+        <div class="brand">Зорге 9 — CMS</div>
+        <div class="group">Секции лендинга</div>
+        {% for sid in ordered_sections %}
+            {% set meta = sections_meta[sid] ?? null %}
+            {% set label = meta is not null ? meta.label : sid %}
+            {% set icon = meta is not null ? meta.icon : 'fa fa-folder' %}
+            {% set count = inventory[sid] ?? 0 %}
+            <a class="nav-item {{ sid == section_id ? 'active' : '' }}"
+               href="{{ path('section_editor', {section: sid}) }}">
+                <span class="icon"><i class="{{ icon }}"></i></span>
+                <span>{{ label }}</span>
+                <span class="count">{{ count }}</span>
+            </a>
+        {% endfor %}
+        {% if has_unknown %}
+            <a class="nav-item {{ section_id == 'unknown' ? 'active' : '' }}"
+               href="{{ path('section_editor', {section: 'unknown'}) }}">
+                <span class="icon"><i class="fa fa-folder"></i></span>
+                <span>Прочее</span>
+                <span class="count">{{ inventory.unknown ?? 0 }}</span>
+            </a>
+        {% endif %}
+        <div class="group">Файлы</div>
+        <a class="nav-item" href="/cms-admin/media-item">
+            <span class="icon"><i class="fa fa-photo-film"></i></span>
+            <span>Медиа-библиотека</span>
+        </a>
+        <div class="group">&nbsp;</div>
+        <a class="nav-item" href="/cms-admin/user">
+            <span class="icon"><i class="fa fa-user"></i></span>
+            <span>Пользователи</span>
+        </a>
+        <a class="nav-item" href="/cms-admin/logout">
+            <span class="icon"><i class="fa fa-sign-out"></i></span>
+            <span>Выйти</span>
+        </a>
+        <a class="nav-item" href="/" target="_blank">
+            <span class="icon"><i class="fa fa-external-link"></i></span>
+            <span>Открыть сайт</span>
+        </a>
+    </aside>
+
+    <main>
+        <form method="POST" enctype="multipart/form-data">
+            <div class="actions-bar">
+                <div>
+                    <div class="header-row">
+                        <h1>{{ section_label }}</h1>
+                        <span class="subtitle">{{ texts|length }} текстов · {{ images|length }} картинок</span>
+                    </div>
+                </div>
+                <div style="margin-left: auto; display: flex; gap: 10px;">
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </div>
+
+            {% for type, messages in app.flashes(['success', 'error']) %}
+                {% for message in messages %}
+                    <div class="flash {{ type }}">{{ message }}</div>
+                {% endfor %}
+            {% endfor %}
+
+            {% if texts is not empty %}
+                <div class="section-title">Тексты</div>
+                {% for tb in texts %}
+                    {% set effective = tb.value ?? tb.defaultValue %}
+                    {% set overridden = tb.value is not null %}
+                    {% set other_sections = tb.sections|filter(s => s != section_id and s != 'unknown') %}
+                    <div class="block">
+                        <div class="meta">
+                            <span class="label">{{ tb.label }}</span>
+                            {% if other_sections is not empty %}
+                                <span class="badge-shared">общий</span>
+                                <span class="where">также в: {% for s in other_sections %}{{ sections_meta[s].label ?? s }}{{ not loop.last ? ', ' : '' }}{% endfor %}</span>
+                            {% endif %}
+                        </div>
+                        <textarea name="text[{{ tb.id }}]" rows="2">{{ effective|striptags }}</textarea>
+                        <div class="controls">
+                            <label>
+                                <input type="checkbox" name="text_reset[{{ tb.id }}]" value="1"
+                                       {% if not overridden %}disabled{% endif %}>
+                                {% if overridden %}Откатить к оригиналу{% else %}Сейчас оригинал{% endif %}
+                            </label>
+                            {% if overridden %}
+                                <span class="default">Оригинал: {{ tb.defaultValue|striptags|slice(0, 100) }}{% if tb.defaultValue|length > 100 %}…{% endif %}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            {% if images is not empty %}
+                <div class="section-title">Картинки</div>
+                <div class="images-grid">
+                    {% for ib in images %}
+                        {% set has_override = ib.media is not null %}
+                        {% set src = has_override ? '/cms-admin/uploads/media/' ~ ib.media.filename : ib.defaultSrc %}
+                        {% set other_sections = ib.sections|filter(s => s != section_id and s != 'unknown') %}
+                        <div class="image-block">
+                            <div class="preview"><img src="{{ src }}" alt="{{ ib.alt ?: ib.label }}"></div>
+                            <div class="label">{{ ib.label }}{% if has_override %} <span class="replaced">(заменено)</span>{% endif %}</div>
+                            {% if other_sections is not empty %}
+                                <div class="where">также в: {% for s in other_sections %}{{ sections_meta[s].label ?? s }}{{ not loop.last ? ', ' : '' }}{% endfor %}</div>
+                            {% endif %}
+                            <input type="file" name="image_file[{{ ib.id }}]" accept="image/*">
+                            <input type="text" name="image_alt[{{ ib.id }}]" value="{{ ib.alt ?: '' }}" placeholder="alt-текст (для SEO/доступности)">
+                            {% if has_override %}
+                                <div class="controls">
+                                    <label>
+                                        <input type="checkbox" name="image_reset[{{ ib.id }}]" value="1">
+                                        Вернуть оригинал
+                                    </label>
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            {% if texts is empty and images is empty %}
+                <div class="nothing">В этой секции нет редактируемых блоков.</div>
+            {% endif %}
+
+            <div style="margin-top: 30px;">
+                <button type="submit" class="btn btn-primary">Сохранить</button>
+                <a class="btn btn-ghost" href="{{ path('section_editor', {section: section_id}) }}">Отменить</a>
+            </div>
+        </form>
+    </main>
+</div>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</body>
+</html>

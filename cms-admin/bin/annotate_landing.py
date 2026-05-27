@@ -35,11 +35,18 @@ LANDING_PAGE_PATHS = {
 }
 
 # (class-prefix, (section-id, russian-label))
-# Order matters slightly — first match wins. More-specific prefixes first.
+# Order matters slightly — more-specific prefixes go first.  Both
+# `infrastructure-hero__*` and bare `infrastructure__*` map to the same
+# logical section: the landing has a small heading wrapper named
+# *-hero, but the main content lives in <div class="<name>__*"> blocks
+# that are NOT inside the hero element.
 SECTION_HINTS: list[tuple[str, tuple[str, str]]] = [
-    ('apartments-hero', ('apartments',     'Апартаменты — hero')),
-    ('penthouses-hero', ('penthouses',     'Пентхаусы — hero')),
-    ('infrastructure-hero', ('infrastructure', 'Инфраструктура — hero')),
+    ('apartments-hero', ('apartments',     'Апартаменты')),
+    ('penthouses-hero', ('penthouses',     'Пентхаусы')),
+    ('infrastructure-hero', ('infrastructure', 'Инфраструктура')),
+    ('apartments',     ('apartments',     'Апартаменты')),
+    ('penthouses',     ('penthouses',     'Пентхаусы')),
+    ('infrastructure', ('infrastructure', 'Инфраструктура')),
     ('intro',          ('intro',          'Главный экран')),
     ('about',          ('about',          'О проекте')),
     ('location',       ('location',       'Локация')),
@@ -57,6 +64,7 @@ SECTION_HINTS: list[tuple[str, tuple[str, str]]] = [
     ('management',     ('management',     'Управление')),
     ('investment',     ('investment',     'Инвестиции')),
     ('request',        ('request',        'Форма заявки')),
+    ('privacy-policy', ('privacy-policy', 'Политика конфиденциальности')),
     ('offers-modal',   ('offers',         'Акции (всплывающее)')),
     ('preloader',      ('preloader',      'Прелоадер')),
     ('cookie-consent', ('cookies',        'Cookie-уведомление')),
