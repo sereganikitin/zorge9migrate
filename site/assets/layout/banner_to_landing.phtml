@@ -1,70 +1,65 @@
 <?php
 /*
- * Баннер "Перейти на главную сайта" — выводится сверху и снизу каждой
- * страницы Wolf-а (рендерится из page.phtml).  Цель: посетители, попавшие
- * сюда из поисковой выдачи на устаревшие URL, должны очевидно увидеть,
- * что актуальный сайт — это лендинг zorge9.com, и иметь явный путь туда.
+ * Floating "go to landing" CTA — one fixed button at the top-left of the
+ * viewport, another fixed at the bottom-left.  Visible at any scroll position.
  *
- * $z9_banner_position = 'top' | 'bottom' — задаётся вызывающим include'ом.
+ * $z9_banner_position = 'top' | 'bottom' — set by the caller before include.
+ * The shared CSS is only emitted once (on the first include — `top` runs first
+ * in page.phtml).
  */
 $position = isset($z9_banner_position) ? $z9_banner_position : 'top';
 $is_top = $position === 'top';
-$z9_banner_msg = $is_top
-    ? 'Вы находитесь на странице с архивной информацией о&nbsp;проекте.'
-    : 'Это страница со старыми материалами.';
-$z9_banner_cta = 'Открыть актуальный сайт ЖК Зорге 9';
 ?>
-<div class="z9-to-landing-banner z9-to-landing-banner--<?= htmlspecialchars($position) ?>"
-     role="region" aria-label="Переход на главный сайт">
-    <div class="z9-to-landing-banner__inner">
-        <div class="z9-to-landing-banner__text"><?= $z9_banner_msg ?></div>
-        <a class="z9-to-landing-banner__cta" href="/"><?= htmlspecialchars($z9_banner_cta) ?> &nbsp;→</a>
-    </div>
-</div>
+<a class="z9-to-landing z9-to-landing--<?= htmlspecialchars($position) ?>"
+   href="/" rel="nofollow">
+    Открыть актуальный сайт ЖК Зорге 9 &nbsp;→
+</a>
 <?php if ($is_top): ?>
 <style>
-.z9-to-landing-banner {
-    background: #111;
-    color: #f4f4f4;
-    border-bottom: 1px solid #c7a55a;
-    padding: 14px 24px;
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    font-size: 15px;
-    line-height: 1.4;
+/* Floating CTA — always on top of Wolf's absolutely-positioned content */
+.z9-to-landing {
+    position: fixed;
+    left: 20px;
     z-index: 99999;
-    position: relative;
-}
-.z9-to-landing-banner--bottom {
-    border-top: 1px solid #c7a55a;
-    border-bottom: 0;
-    padding: 20px 24px;
-}
-.z9-to-landing-banner__inner {
-    max-width: 1200px;
-    margin: 0 auto;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 14px 24px;
-    justify-content: space-between;
-}
-.z9-to-landing-banner__text { flex: 1 1 auto; min-width: 0; }
-.z9-to-landing-banner__cta {
     background: #c7a55a;
     color: #111;
     text-decoration: none;
-    padding: 9px 18px;
+    padding: 10px 18px;
     border-radius: 4px;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     font-weight: 600;
     font-size: 14px;
+    line-height: 1;
     white-space: nowrap;
-    transition: background .15s ease;
+    box-shadow: 0 2px 12px rgba(0,0,0,.4);
+    transition: background .15s ease, transform .15s ease;
 }
-.z9-to-landing-banner__cta:hover { background: #d8b96e; color: #111; }
+.z9-to-landing:hover { background: #d8b96e; color: #111; transform: translateY(-1px); }
+.z9-to-landing--top    { top: 20px; }
+.z9-to-landing--bottom { bottom: 20px; }
+
 @media (max-width: 640px) {
-    .z9-to-landing-banner { padding: 12px 16px; font-size: 14px; }
-    .z9-to-landing-banner__inner { flex-direction: column; align-items: stretch; gap: 10px; }
-    .z9-to-landing-banner__cta { text-align: center; }
+    .z9-to-landing { left: 12px; padding: 9px 14px; font-size: 13px; }
+    .z9-to-landing--top    { top: 12px; }
+    .z9-to-landing--bottom { bottom: 12px; }
+}
+
+/* Hide leftover sidebar wrappers — Wolf used the right edge for the menu,
+   social, art3d link. With menu removed they are blank space; force them out
+   and let the main content use the full viewport width. */
+.logo, .art3d, .menu_frame, .menu_phone, .menu_wrap, .menu_list,
+.social, .menu_bottom { display: none !important; }
+
+/* Take back the room the sidebar used to reserve.  Several variants of
+   Wolf's CSS pin these elements to a fixed right inset — clear it. */
+#body_frame, #centrer1, #centrer2, .load_frame_content, .load_frame,
+.resizable, .not-resizable {
+    right: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
 }
 </style>
 <?php endif; ?>

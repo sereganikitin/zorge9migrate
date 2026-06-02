@@ -60,7 +60,7 @@ jobs:
           ssh -i ~/.ssh/deploy_key \
               -o UserKnownHostsFile=~/.ssh/known_hosts \
               ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
-              "rm -rf ${{ secrets.DEPLOY_PATH }}/main"
+              "rm -rf ${{ secrets.DEPLOY_PATH }}/main ${{ secrets.DEPLOY_PATH }}/promo"
 
       - name: Reload PHP-FPM (clear opcache)
         run: |
@@ -83,3 +83,10 @@ jobs:
           code=$(curl -skL -o /dev/null -w '%{http_code}' "https://zorge9.infoseledka.ru/main")
           echo "  /main HTTP $code (expected 404)"
           test "$code" = "404" || (echo "FAIL: /main should be gone, got $code"; exit 1)
+          # /promo/* must 301 to their Wolf-served replacements.
+          for pair in "/promo/commercial:/retail" "/promo/office:/office" "/promo/pent:/pent"; do
+            src="${pair%%:*}"; dst="${pair##*:}"
+            loc=$(curl -skI -A Mozilla "https://zorge9.infoseledka.ru${src}" | grep -i '^location:' | awk '{print $2}' | tr -d '\r')
+            echo "  ${src} → ${loc}"
+            echo "${loc}" | grep -qE "${dst}$" || (echo "FAIL: expected ${src} → ${dst}, got ${loc}"; exit 1)
+          done

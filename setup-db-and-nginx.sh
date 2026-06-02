@@ -143,6 +143,15 @@ server {
         rewrite ^/([^/]+).*$ /_cms-render.php?page=$1 last;
     }
 
+    # ───────── 301 redirects for retired /promo/* archives ─────────
+    # The standalone /promo/{commercial,office,pent} static landings have been
+    # superseded by Wolf-rendered pages at /retail, /office, /pent.  Using
+    # `^~` (prefix-priority) so these win over the static-asset regex above
+    # even for paths like /promo/office/foo.html.
+    location ^~ /promo/commercial { return 301 /retail; }
+    location ^~ /promo/office     { return 301 /office; }
+    location ^~ /promo/pent       { return 301 /pent; }
+
     location / {
         try_files $uri $uri/ @wolf;
     }
