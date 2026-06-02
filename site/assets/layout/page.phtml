@@ -247,9 +247,6 @@ if (!isset($_SERVER['HTTP_X_PJAX'])) {
             </div>';
     include 'assets/' . $src_path . 'layout/menu.phtml';
     echo '</div>';
-    // Bottom banner — same CTA at the end of the page.
-    $z9_banner_position = 'bottom';
-    include 'assets/layout/banner_to_landing.phtml';
     include 'assets/layout/footer.phtml';
 } else {
     echo json_encode(array(
