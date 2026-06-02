@@ -231,6 +231,11 @@ $content = ob_get_clean();
 
 if (!isset($_SERVER['HTTP_X_PJAX'])) {
     include 'assets/layout/header.phtml';
+    // Top banner — visitors arriving here from search engines should see
+    // immediately that this is an archived page and how to get to the
+    // current landing.
+    $z9_banner_position = 'top';
+    include 'assets/layout/banner_to_landing.phtml';
     echo '
         <div class="div_100" id="centrer1"></div>
         <div class="div_100" id="centrer2">
@@ -242,6 +247,9 @@ if (!isset($_SERVER['HTTP_X_PJAX'])) {
             </div>';
     include 'assets/' . $src_path . 'layout/menu.phtml';
     echo '</div>';
+    // Bottom banner — same CTA at the end of the page.
+    $z9_banner_position = 'bottom';
+    include 'assets/layout/banner_to_landing.phtml';
     include 'assets/layout/footer.phtml';
 } else {
     echo json_encode(array(

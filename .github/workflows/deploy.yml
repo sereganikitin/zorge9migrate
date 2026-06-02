@@ -52,14 +52,15 @@ jobs:
             ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PATH }}
 
       - name: Remove superseded files (rsync runs without --delete)
-        # /main/index.html was a single desktop snapshot; replaced by index.php that
-        # switches between desktop.html and mobile.html on User-Agent. nginx's
-        # `index index.html index.php` would otherwise still pick the stale html.
+        # The /main route was a snapshot of the old Wolf homepage so the
+        # landing's footer could link "back to the old site".  We dropped
+        # that direction: now the old pages route TO the landing instead,
+        # never the other way around.  Strip whatever was previously synced.
         run: |
           ssh -i ~/.ssh/deploy_key \
               -o UserKnownHostsFile=~/.ssh/known_hosts \
               ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
-              "rm -f ${{ secrets.DEPLOY_PATH }}/main/index.html"
+              "rm -rf ${{ secrets.DEPLOY_PATH }}/main"
 
       - name: Reload PHP-FPM (clear opcache)
         run: |
@@ -71,8 +72,14 @@ jobs:
       - name: Smoke test
         run: |
           # -L follows 301: nginx redirects /apartments -> /apartments/ (directory canonical).
-          for url in / /main /apartments /office /pent /retail; do
+          # /main was removed (no longer linked from the landing).  Old pages
+          # are reachable via sitemap.xml.
+          for url in / /apartments /office /pent /retail /about /sitemap.xml; do
             code=$(curl -skL -o /dev/null -w '%{http_code}' "https://zorge9.infoseledka.ru$url")
             echo "  $url HTTP $code"
             test "$code" = "200" || (echo "FAIL $url"; exit 1)
           done
+          # /main must now 404 (Wolf will render its page-not-found template).
+          code=$(curl -skL -o /dev/null -w '%{http_code}' "https://zorge9.infoseledka.ru/main")
+          echo "  /main HTTP $code (expected 404)"
+          test "$code" = "404" || (echo "FAIL: /main should be gone, got $code"; exit 1)
