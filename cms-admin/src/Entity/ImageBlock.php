@@ -37,8 +37,12 @@ class ImageBlock
     private ?string $defaultSrc = null;
 
     #[ORM\ManyToOne(targetEntity: MediaItem::class)]
-    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    #[ORM\JoinColumn(name: 'media_id', nullable: true, onDelete: 'SET NULL')]
     private ?MediaItem $media = null;
+
+    #[ORM\ManyToOne(targetEntity: MediaItem::class)]
+    #[ORM\JoinColumn(name: 'media_mobile_id', nullable: true, onDelete: 'SET NULL')]
+    private ?MediaItem $mediaMobile = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $alt = null;
@@ -87,6 +91,14 @@ class ImageBlock
     public function setMedia(?MediaItem $m): self
     {
         $this->media = $m;
+        $this->updatedAt = new \DateTimeImmutable();
+        return $this;
+    }
+
+    public function getMediaMobile(): ?MediaItem { return $this->mediaMobile; }
+    public function setMediaMobile(?MediaItem $m): self
+    {
+        $this->mediaMobile = $m;
         $this->updatedAt = new \DateTimeImmutable();
         return $this;
     }

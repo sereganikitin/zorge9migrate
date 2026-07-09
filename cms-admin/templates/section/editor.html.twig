@@ -65,11 +65,16 @@
         .image-block .download-original:hover { text-decoration: underline; }
         .image-block .label { font-weight: 500; margin: 8px 0 4px; }
         .image-block .where { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
-        .image-block input[type=file] { width: 100%; font-size: 12px; margin-top: 6px; }
+        .image-block input[type=file] { width: 100%; font-size: 12px; margin-top: 4px; }
         .image-block input[type=text] { width: 100%; background: #0a0a0a; color: var(--text); border: 1px solid var(--border); border-radius: 3px; padding: 6px 8px; font-size: 12px; margin-top: 4px; }
-        .image-block .controls { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
+        .image-block .controls { display: flex; gap: 8px; margin-top: 6px; align-items: center; }
         .image-block .controls label { color: var(--muted); font-size: 12px; display: flex; gap: 6px; align-items: center; }
         .image-block .replaced { color: var(--accent); font-size: 11px; }
+        .image-block .variant { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border); }
+        .image-block .variant-label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+        .image-block .variant-preview { width: 80px; aspect-ratio: 4/3; background: #0a0a0a; border-radius: 3px; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; margin-right: 8px; }
+        .image-block .variant-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .image-block .variant-row { display: flex; gap: 8px; align-items: flex-start; margin-top: 4px; }
 
         .nothing { color: var(--muted); padding: 24px 0; font-style: italic; }
     </style>
@@ -173,7 +178,9 @@
                 <div class="images-grid">
                     {% for ib in images %}
                         {% set has_override = ib.media is not null %}
+                        {% set has_mobile_override = ib.mediaMobile is not null %}
                         {% set src = has_override ? '/cms-admin/uploads/media/' ~ ib.media.filename : ib.defaultSrc %}
+                        {% set mobile_src = has_mobile_override ? '/cms-admin/uploads/media/' ~ ib.mediaMobile.filename : null %}
                         {% set download_name = has_override
                             ? (ib.media.originalName ?: ib.media.filename)
                             : (ib.defaultSrc|split('/')|last) %}
@@ -189,19 +196,42 @@
                             {% if other_sections is not empty %}
                                 <div class="where">также в: {% for s in other_sections %}{{ sections_meta[s].label ?? s }}{{ not loop.last ? ', ' : '' }}{% endfor %}</div>
                             {% endif %}
+
+                            <div class="variant-label">Десктоп</div>
                             <input type="file" name="image_file[{{ ib.id }}]" accept="image/*">
-                            <input type="text" name="image_alt[{{ ib.id }}]" value="{{ ib.alt ?: '' }}" placeholder="alt-текст (для SEO/доступности)">
                             {% if has_override %}
-                                <a class="download-original" href="{{ ib.defaultSrc }}" download="{{ ib.defaultSrc|split('/')|last }}">
-                                    <i class="fa fa-download"></i> Скачать исходную (до замены)
-                                </a>
                                 <div class="controls">
                                     <label>
                                         <input type="checkbox" name="image_reset[{{ ib.id }}]" value="1">
                                         Вернуть оригинал
                                     </label>
                                 </div>
+                                <a class="download-original" href="{{ ib.defaultSrc }}" download="{{ ib.defaultSrc|split('/')|last }}">
+                                    <i class="fa fa-download"></i> Скачать исходную (до замены)
+                                </a>
                             {% endif %}
+
+                            <div class="variant">
+                                <div class="variant-label">Мобильная версия {% if has_mobile_override %} <span class="replaced">(загружено)</span>{% endif %}</div>
+                                {% if has_mobile_override %}
+                                    <div class="variant-row">
+                                        <div class="variant-preview"><img src="{{ mobile_src }}" alt=""></div>
+                                        <div style="flex:1">
+                                            <input type="file" name="image_file_mobile[{{ ib.id }}]" accept="image/*">
+                                            <div class="controls">
+                                                <label>
+                                                    <input type="checkbox" name="image_reset_mobile[{{ ib.id }}]" value="1">
+                                                    Убрать мобильный вариант
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% else %}
+                                    <input type="file" name="image_file_mobile[{{ ib.id }}]" accept="image/*">
+                                {% endif %}
+                            </div>
+
+                            <input type="text" name="image_alt[{{ ib.id }}]" value="{{ ib.alt ?: '' }}" placeholder="alt-текст (для SEO/доступности)">
                         </div>
                     {% endfor %}
                 </div>

@@ -54,8 +54,8 @@ try {
     foreach ($texts as $key => $value) {
         $html = apply_text_override($html, $key, $value);
     }
-    foreach ($images as $key => $src) {
-        $html = apply_image_override($html, $key, $src);
+    foreach ($images as $key => $variants) {
+        $html = apply_image_override($html, $key, $variants['desktop'] ?? null, $variants['mobile'] ?? null);
     }
 } catch (Throwable $e) {
     error_log('[_cms-render] override apply failed: ' . $e->getMessage());
@@ -85,7 +85,9 @@ function open_cms_pdo(): PDO
     );
 }
 
-/** @return array{0: array<string,string>, 1: array<string,string>} */
+/**
+ * @return array{0: array<string,string>, 1: array<string,array{desktop:?string,mobile:?string}>}
+ */
 function load_overrides(PDO $pdo): array
 {
     $texts = [];
@@ -96,12 +98,19 @@ function load_overrides(PDO $pdo): array
 
     $images = [];
     $stmt = $pdo->query('
-        SELECT ib.block_key, mi.filename
+        SELECT ib.block_key,
+               md.filename AS desktop_filename,
+               mm.filename AS mobile_filename
         FROM image_block ib
-        INNER JOIN media_item mi ON mi.id = ib.media_id
+        LEFT JOIN media_item md ON md.id = ib.media_id
+        LEFT JOIN media_item mm ON mm.id = ib.media_mobile_id
+        WHERE ib.media_id IS NOT NULL OR ib.media_mobile_id IS NOT NULL
     ');
     foreach ($stmt as $row) {
-        $images[$row['block_key']] = '/cms-admin/uploads/media/' . $row['filename'];
+        $images[$row['block_key']] = [
+            'desktop' => $row['desktop_filename'] ? '/cms-admin/uploads/media/' . $row['desktop_filename'] : null,
+            'mobile'  => $row['mobile_filename']  ? '/cms-admin/uploads/media/' . $row['mobile_filename']  : null,
+        ];
     }
 
     return [$texts, $images];
@@ -117,32 +126,58 @@ function apply_text_override(string $html, string $key, string $value): string
     );
 }
 
-function apply_image_override(string $html, string $key, string $newSrc): string
+/**
+ * Apply image overrides. Inside a <picture>, <source srcset="..."> are the
+ * larger-screen variants and the inner <img src="..."> is the mobile fallback.
+ *
+ * - desktop only set → both <source> srcsets and inner <img> get desktop
+ *   (same as the old single-image behaviour).
+ * - mobile only set  → <source> srcsets are left untouched (original desktop
+ *   art); only inner <img> src is replaced with mobile.
+ * - both set         → <source> srcsets get desktop, inner <img> gets mobile.
+ *
+ * For standalone <img data-cms-img-key="..."> (no <picture> wrapper) we only
+ * have one slot, so desktop wins if set, otherwise mobile.
+ */
+function apply_image_override(string $html, string $key, ?string $desktopSrc, ?string $mobileSrc): string
 {
-    $quoted = preg_quote($key, '/');
-    $newEsc = htmlspecialchars($newSrc, ENT_QUOTES);
+    if ($desktopSrc === null && $mobileSrc === null) return $html;
 
-    // <picture data-cms-img-key="..."> — replace srcset + src inside.
+    $quoted = preg_quote($key, '/');
+    $desktopEsc = $desktopSrc !== null ? htmlspecialchars($desktopSrc, ENT_QUOTES) : null;
+    $mobileEsc  = $mobileSrc  !== null ? htmlspecialchars($mobileSrc,  ENT_QUOTES) : null;
+    // For the inner <img> inside <picture> and for standalone <img>: prefer mobile / desktop respectively.
+    $innerImgEsc = $mobileEsc ?? $desktopEsc;
+    $standaloneEsc = $desktopEsc ?? $mobileEsc;
+
+    // <picture data-cms-img-key="...">
     $html = (string) preg_replace_callback(
         '/(<picture\b[^>]*data-cms-img-key="' . $quoted . '"[^>]*>)([\s\S]*?)(<\/picture>)/',
-        static function (array $m) use ($newEsc): string {
-            $inner = (string) preg_replace('/\bsrcset="[^"]*"/', 'srcset="' . $newEsc . '"', $m[2]);
-            $inner = (string) preg_replace('/\bsrc="[^"]*"/',    'src="'    . $newEsc . '"', $inner);
+        static function (array $m) use ($desktopEsc, $innerImgEsc): string {
+            $inner = $m[2];
+            if ($desktopEsc !== null) {
+                $inner = (string) preg_replace('/\bsrcset="[^"]*"/', 'srcset="' . $desktopEsc . '"', $inner);
+            }
+            if ($innerImgEsc !== null) {
+                $inner = (string) preg_replace('/\bsrc="[^"]*"/', 'src="' . $innerImgEsc . '"', $inner);
+            }
             return $m[1] . $inner . $m[3];
         },
         $html
     );
 
-    // Standalone <img data-cms-img-key="...">
-    $html = (string) preg_replace_callback(
-        '/<img\b([^>]*data-cms-img-key="' . $quoted . '"[^>]*)>/',
-        static function (array $m) use ($newEsc): string {
-            $attrs = (string) preg_replace('/\bsrc="[^"]*"/',    'src="'    . $newEsc . '"', $m[1]);
-            $attrs = (string) preg_replace('/\bsrcset="[^"]*"/', 'srcset="' . $newEsc . '"', $attrs);
-            return '<img' . $attrs . '>';
-        },
-        $html
-    );
+    // Standalone <img data-cms-img-key="..."> — single slot, desktop wins.
+    if ($standaloneEsc !== null) {
+        $html = (string) preg_replace_callback(
+            '/<img\b([^>]*data-cms-img-key="' . $quoted . '"[^>]*)>/',
+            static function (array $m) use ($standaloneEsc): string {
+                $attrs = (string) preg_replace('/\bsrc="[^"]*"/',    'src="'    . $standaloneEsc . '"', $m[1]);
+                $attrs = (string) preg_replace('/\bsrcset="[^"]*"/', 'srcset="' . $standaloneEsc . '"', $attrs);
+                return '<img' . $attrs . '>';
+            },
+            $html
+        );
+    }
 
     return $html;
 }

@@ -63,6 +63,7 @@ class SectionEditorController extends AbstractController
         $resetTexts = $request->request->all('text_reset');
         $imageAltInput = $request->request->all('image_alt');
         $resetImages = $request->request->all('image_reset');
+        $resetImagesMobile = $request->request->all('image_reset_mobile');
 
         $updated = 0;
 
@@ -85,7 +86,7 @@ class SectionEditorController extends AbstractController
             }
         }
 
-        // Image uploads
+        // Image uploads (desktop)
         $uploadedFiles = $request->files->all('image_file');
         foreach ($uploadedFiles as $id => $file) {
             if (!$file instanceof UploadedFile) continue;
@@ -106,11 +107,38 @@ class SectionEditorController extends AbstractController
             $updated++;
         }
 
-        // Image resets
+        // Image uploads (mobile) — separate file applied only on small viewports.
+        $uploadedMobileFiles = $request->files->all('image_file_mobile');
+        foreach ($uploadedMobileFiles as $id => $file) {
+            if (!$file instanceof UploadedFile) continue;
+            $ib = $imageRepo->find((int) $id);
+            if (!$ib) continue;
+            $meta = $this->moveUploadedFile($file);
+            $mi = (new MediaItem())
+                ->setFilename($meta['filename'])
+                ->setOriginalName($meta['original_name'])
+                ->setMimeType($meta['mime_type'])
+                ->setSizeBytes($meta['size'])
+                ->setAlt($imageAltInput[$id] ?? null);
+            $this->em->persist($mi);
+            $ib->setMediaMobile($mi);
+            $updated++;
+        }
+
+        // Image resets (desktop)
         foreach ($resetImages as $id => $_) {
             $ib = $imageRepo->find((int) $id);
             if ($ib && $ib->getMedia() !== null) {
                 $ib->setMedia(null);
+                $updated++;
+            }
+        }
+
+        // Image resets (mobile)
+        foreach ($resetImagesMobile as $id => $_) {
+            $ib = $imageRepo->find((int) $id);
+            if ($ib && $ib->getMediaMobile() !== null) {
+                $ib->setMediaMobile(null);
                 $updated++;
             }
         }
