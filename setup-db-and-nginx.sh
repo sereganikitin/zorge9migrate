@@ -143,6 +143,14 @@ server {
         rewrite ^/([^/]+).*$ /_cms-render.php?page=$1 last;
     }
 
+    # ───────── Old-site homepage entry point ─────────
+    # `/` is now the landing (via _cms-render.php), so Wolf's homepage
+    # (page id=1) has no natural URL.  Surface it at /main — rewrite to
+    # index.php with empty WOLFPAGE, which makes Wolf render its root page.
+    location = /main {
+        rewrite ^ /index.php?WOLFPAGE= last;
+    }
+
     # ───────── 301 redirects for retired /promo/* archives ─────────
     # The standalone /promo/{commercial,office,pent} static landings have been
     # superseded by Wolf-rendered pages at /retail, /office, /pent.  Using

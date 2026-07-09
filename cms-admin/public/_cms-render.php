@@ -61,11 +61,57 @@ try {
     error_log('[_cms-render] override apply failed: ' . $e->getMessage());
 }
 
+// Temporary floating CTA to the old-site archive at old.zorge9.com.
+// Remove this block (and the OLD_SITE_CTA constant below) when no longer needed.
+$html = inject_old_site_cta($html);
+
 header('Content-Type: text/html; charset=utf-8');
 header('Cache-Control: no-cache, must-revalidate');
 echo $html;
 
 // --- helpers ---
+
+/**
+ * Inject the temporary "open old-site archive" CTA into the response.
+ * Placed just before </body>. If no </body> is found (very unlikely for a
+ * landing page), append at end.
+ */
+function inject_old_site_cta(string $html): string
+{
+    $snippet = <<<'HTML'
+<a href="/main" target="_blank" rel="noopener"
+   id="z9-old-site-cta">Копия старого сайта&nbsp;→</a>
+<style>
+#z9-old-site-cta {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 999999;
+    background: #c7a55a;
+    color: #111;
+    text-decoration: none;
+    padding: 10px 18px;
+    border-radius: 4px;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 1;
+    white-space: nowrap;
+    box-shadow: 0 2px 12px rgba(0,0,0,.4);
+    transition: background .15s ease, transform .15s ease;
+}
+#z9-old-site-cta:hover { background: #d8b96e; color: #111; transform: translateY(-1px); }
+@media (max-width: 640px) {
+    #z9-old-site-cta { top: 12px; right: 12px; padding: 9px 14px; font-size: 13px; }
+}
+</style>
+HTML;
+
+    if (stripos($html, '</body>') !== false) {
+        return (string) preg_replace('#</body>#i', $snippet . '</body>', $html, 1);
+    }
+    return $html . $snippet;
+}
 
 function open_cms_pdo(): PDO
 {

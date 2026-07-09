@@ -43,46 +43,5 @@ $is_top = $position === 'top';
     .z9-to-landing--top    { top: 12px; }
     .z9-to-landing--bottom { bottom: 12px; }
 }
-
-/* Hide leftover sidebar wrappers — Wolf's menu sat at left:0 width:22em.
-   With the menu removed they are dead space; force them out. */
-.logo, .art3d, .menu_frame, .menu_phone, .menu_wrap, .menu_list,
-.social, .menu_bottom { display: none !important; }
-
-/* The 22rem left inset is the menu's reserved area, baked all over the
-   stylesheet:
-     .container               { padding-left: 22rem }
-     .not-resizable > .content{ left: 22rem }
-     .plans__scroll-content   { padding-left: 22rem; padding-top: 10rem }
-     .retail_frame .container { left: 22em }   (legacy class)
-     plus many .X_frame .container variants with `left: 22rem/22em`
-   Reset all of them so each landing page uses the whole viewport. */
-.container,
-.not-resizable > .content,
-.plans__scroll-content,
-[class$="_frame"] .container,
-[class$="_frame"] .content,
-[class$="_frame"] .text_scroll,
-[class$="_frame"] [class*="__content"],
-[class$="_frame"] [class*="__scroll"] {
-    left: 0 !important;
-    right: 0 !important;
-    padding-left: 0 !important;
-    margin-left: 0 !important;
-}
-/* Also clear the top reservation that some pages add for the (hidden) header
-   bar above .container — gives the content the full viewport height too. */
-.plans__scroll-content { padding-top: 0 !important; }
-
-/* And the high-level wrappers — make sure they really span 100vw. */
-#body_frame, #centrer1, #centrer2, .load_frame_content, .load_frame,
-.resizable, .not-resizable {
-    left: 0 !important;
-    right: 0 !important;
-    width: 100% !important;
-    max-width: 100vw !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-}
 </style>
 <?php endif; ?>

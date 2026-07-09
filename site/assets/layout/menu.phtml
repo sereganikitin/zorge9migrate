@@ -1,13 +1,31 @@
-<?php
-// MENU HIDDEN — старый сайт теперь под доменом лендинга, единственный
-// путь со страниц Wolf-а должен вести на главную лендинга (/).  Прежние
-// пункты меню, телефон, callback и социалки специально не выводим.
-//
-// preloader_frame / svg_preloader_frame оставлены — без них падает
-// инициализация JS-плагинов в libs.js (поиск этих элементов происходит
-// на старте без проверки на существование).  Logo тоже оставляем как
-// fallback-маршрут "вернуться на главную".
-?>
 <div class="preloader_frame div_100"><img class="preloader_img" src="/assets/i/ring-alt.svg"></div>
 <div class="div_100 accel" id="svg_preloader_frame"></div>
-<a href='/' title="Перейти на главную ЖК Зорге 9" class="logo pjax"></a>
+<a href='/' title="ЖК Зорге 9" class="logo pjax"></a>
+<div class="menu_frame">
+    <div class="menu_phone"></div>
+    <div class="menu_wrap">
+        <div class="menu_list">
+            <?
+                $menu_items = $this->findById(1)->children();
+                $menu_html = '';
+                foreach ($menu_items as $key => $value) {
+                    $label = $value -> hasContent('label') ? ' label' : '';
+                    $menu_html .= '<div class="menu_item"><a class="menu_link pjax '.$label.'" href="'.$value->url().'">'.$value->title().'</a></div>';
+                }
+                echo $menu_html;
+            ?>
+        </div>
+        <div class="social">
+            <div class="social__item"><a href="https://vk.com/zorge9" title="ВК Зорге 9" target="_blank" class="social__link vk"></a></div>
+            <div class="social__item"><a href="https://www.youtube.com/c/%D0%97%D0%BE%D1%80%D0%B3%D0%B59" title="Youtube Зорге 9" target="_blank " class="social__link youtube"></a></div>
+            <div class="social__item"><a href="https://zen.yandex.ru/zorge9" title="Яндекс Дзен Зорге 9" target="_blank" class="social__link yandexdzen"></a></div>
+            <div class="social__item"><a href="https://t.me/stmichael_developer" title="Telegram Зорге 9" target="_blank" class="social__link telegram"></a></div>
+            <div class="social__item"><a href="https://api.whatsapp.com/send?phone=79261678835" title="WhatsApp Зорге 9" target="_blank" class="social__link wp"></a></div>
+        </div>
+        <div class="menu_bottom">
+            <a href="tel:+74951507537" class="phone_link call_phone_1">+7 (495) 150 75 37</a>
+            <div class="callback-btn js-callback" data-class="callbackRequest"><span>Заказать звонок</span></div>
+        </div>
+    </div>
+</div>
+<a href="http://art3d.ru" title="Art3d Зорге 9" rel="nofollow" target="_blank" class="art3d"></a>
