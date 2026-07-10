@@ -72,17 +72,13 @@ jobs:
       - name: Smoke test
         run: |
           # -L follows 301: nginx redirects /apartments -> /apartments/ (directory canonical).
-          # /main was removed (no longer linked from the landing).  Old pages
-          # are reachable via sitemap.xml.
-          for url in / /apartments /office /pent /retail /about /sitemap.xml; do
+          # /main is the entry point to the old-site copy (Wolf CMS page id=1),
+          # restored via nginx `location = /main` — see setup-db-and-nginx.sh.
+          for url in / /apartments /office /pent /retail /about /sitemap.xml /main; do
             code=$(curl -skL -o /dev/null -w '%{http_code}' "https://zorge9.infoseledka.ru$url")
             echo "  $url HTTP $code"
             test "$code" = "200" || (echo "FAIL $url"; exit 1)
           done
-          # /main must now 404 (Wolf will render its page-not-found template).
-          code=$(curl -skL -o /dev/null -w '%{http_code}' "https://zorge9.infoseledka.ru/main")
-          echo "  /main HTTP $code (expected 404)"
-          test "$code" = "404" || (echo "FAIL: /main should be gone, got $code"; exit 1)
           # /promo/* must 301 to their Wolf-served replacements.
           for pair in "/promo/commercial:/retail" "/promo/office:/office" "/promo/pent:/pent"; do
             src="${pair%%:*}"; dst="${pair##*:}"
