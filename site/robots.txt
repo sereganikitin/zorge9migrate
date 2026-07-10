@@ -2,10 +2,18 @@
 #
 # ПОДГОТОВЛЕНО:
 #  - директива Sitemap (карта сайта для поисковиков);
-#  - правило запрета индексации Google на /about/developer.
+#  - раздельные группы для Googlebot / Yandex / прочих ботов;
+#  - Clean-param для UTM/gclid/yclid/fbclid (только для Yandex);
+#  - служебные пути закрыты у всех групп (/cms-admin, /wolf, /hydra, /pdf, /login, /search, /api, /ajax);
+#  - запрет индексации Google на /about/developer.
+#
 # Пока действует тестовая блокировка всего сайта (строки [TEST-BLOCK]).
-# При выходе на боевой домен удалите ОБЕ строки, помеченные [TEST-BLOCK], —
-# сайт станет индексируемым, а Sitemap и запрет /about/developer сохранятся.
+# При выходе на боевой домен удалите ВСЕ строки, помеченные [TEST-BLOCK], —
+# сайт станет индексируемым, а Sitemap, Clean-param и запреты сохранятся.
+#
+# Примечание: директиву Host не добавляем — Yandex перестал её учитывать
+# ещё в 2018 г., каноничный домен теперь указывается через 301-редирект
+# и rel="canonical" (уже настроено).
 
 Sitemap: https://zorge9.com/sitemap.xml
 
@@ -14,7 +22,46 @@ User-agent: Googlebot
 Disallow: /
 # Постоянное правило: Google не индексирует эту страницу
 Disallow: /about/developer
+# Служебные разделы
+Disallow: /cms-admin/
+Disallow: /wolf/admin/
+Disallow: /login/
+Disallow: /search/
+Disallow: /api/
+Disallow: /ajax/
+Disallow: /cdn-cgi/
+Disallow: /hydra/
+Disallow: /pdf/
+Disallow: /*?*
+
+User-agent: Yandex
+# [TEST-BLOCK] удалить при go-live
+Disallow: /
+# Служебные разделы
+Disallow: /cms-admin/
+Disallow: /wolf/admin/
+Disallow: /login/
+Disallow: /search/
+Disallow: /api/
+Disallow: /ajax/
+Disallow: /cdn-cgi/
+Disallow: /hydra/
+Disallow: /pdf/
+# Убрать метки трекинга из URL при индексации
+Clean-param: utm_source&utm_medium&utm_campaign&utm_term&utm_content
+Clean-param: gclid&yclid&fbclid&_openstat
 
 User-agent: *
 # [TEST-BLOCK] удалить при go-live
 Disallow: /
+# Служебные разделы
+Disallow: /cms-admin/
+Disallow: /wolf/admin/
+Disallow: /login/
+Disallow: /search/
+Disallow: /api/
+Disallow: /ajax/
+Disallow: /cdn-cgi/
+Disallow: /hydra/
+Disallow: /pdf/
+Disallow: /*?*

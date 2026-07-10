@@ -254,6 +254,58 @@
 </div>
 </div>
 </section>
+<!-- ===== GEO / AI-Overview blocks — factual summary + spec table ===== -->
+<style>
+.z9-facts { background: #131313; color: #e6e6e6; padding: 32px 20px; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.z9-facts__inner { max-width: 900px; margin: 0 auto; }
+.z9-facts details { border-top: 1px solid #2a2a2a; padding: 16px 0; }
+.z9-facts details:last-child { border-bottom: 1px solid #2a2a2a; }
+.z9-facts summary { cursor: pointer; color: #c7a55a; font-size: 14px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; list-style: none; display: flex; align-items: center; gap: 12px; user-select: none; }
+.z9-facts summary::-webkit-details-marker { display: none; }
+.z9-facts summary::after { content: "▼"; font-size: 10px; margin-left: auto; opacity: .7; transition: transform .2s ease; }
+.z9-facts details[open] summary::after { transform: rotate(180deg); }
+.z9-facts__body { padding: 14px 0 4px; font-size: 15px; line-height: 1.65; color: #cfcfcf; max-width: 78ch; }
+.z9-facts__body p { margin: 0 0 10px; }
+.z9-facts__body p:last-child { margin-bottom: 0; }
+.z9-facts table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 6px; }
+.z9-facts th, .z9-facts td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #262626; vertical-align: top; }
+.z9-facts th { color: #a89373; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; font-size: 11px; }
+.z9-facts .note { color: #888; font-size: 12px; font-style: italic; margin-top: 12px; }
+@media (max-width: 640px) { .z9-facts { padding: 24px 16px; } .z9-facts summary { font-size: 13px; } .z9-facts__body { font-size: 14px; } .z9-facts th, .z9-facts td { padding: 8px 8px; font-size: 13px; } }
+</style>
+<section class="z9-facts" aria-label="Основные факты о проекте Зорге 9">
+<div class="z9-facts__inner">
+<details>
+<summary>Кратко о Зорге 9</summary>
+<div class="z9-facts__body">
+<p>Зорге 9 — готовый квартал апартаментов бизнес-класса в Хорошёвском районе Москвы, на Ходынке, по адресу ул. Зорге, 9Ак1. В проекте представлены студии, однокомнатные апартаменты, апартаменты с террасами и антресолями. Минимальная стоимость — от 12 млн&nbsp;₽. В комплексе есть собственный парк 2&nbsp;га, фитнес-клуб 3000&nbsp;м² с бассейном 25&nbsp;м, паркинг, кладовые, консьерж-сервис и управляющая компания.</p>
+</div>
+</details>
+<details>
+<summary>Основные характеристики проекта</summary>
+<div class="z9-facts__body">
+<table>
+<caption class="sr-only">Основные характеристики проекта Зорге 9</caption>
+<thead><tr><th>Параметр</th><th>Значение</th></tr></thead>
+<tbody>
+<tr><td>Название проекта</td><td>Зорге 9</td></tr>
+<tr><td>Тип недвижимости</td><td>апартаменты бизнес-класса</td></tr>
+<tr><td>Локация</td><td>Москва, Ходынка, Хорошёвский район</td></tr>
+<tr><td>Адрес</td><td>ул. Зорге, 9Ак1</td></tr>
+<tr><td>Статус проекта</td><td>готовый дом</td></tr>
+<tr><td>Минимальная стоимость</td><td>от 12&nbsp;млн&nbsp;₽</td></tr>
+<tr><td>Форматы</td><td>студии, 1-комнатные апартаменты, апартаменты с террасами, апартаменты с антресолями</td></tr>
+<tr><td>Ключевые преимущества</td><td>готовность дома, локация на Ходынке, сервисы уровня отеля, собственная инфраструктура</td></tr>
+<tr><td>Инфраструктура комплекса</td><td>парк 2&nbsp;га, фитнес-клуб 3000&nbsp;м², бассейн 25&nbsp;м, паркинг, кладовые, лобби, коворкинг, комьюнити-центр</td></tr>
+<tr><td>Условия покупки</td><td>рассрочка, ипотека, trade-in</td></tr>
+</tbody>
+</table>
+<p class="note">Информация актуальна на дату публикации. Подробности уточняйте в офисе продаж.</p>
+</div>
+</details>
+</div>
+</section>
+<!-- ===== end GEO blocks ===== -->
 <section class="about section ui-dark ui-background" data-plugin="reveal" data-scroll-section="" data-scroll-snap-point='[
         { "viewport": 0, "element": 33.34 }
     ]' id="about">
@@ -6152,7 +6204,7 @@
 <span class="btn btn--clone" data-button-clone-content="true" data-plugin=" button">
 <span class="btn__content">
 <span class="btn__text">
-                    больше информации  <p data-cms-text-key="t-0f0d0d5b12" style="display:none">ВК49865</p><br/>
+                    больше информации  <span data-cms-text-key="t-0f0d0d5b12" style="display:none">ВК49865</span><br/>
 на st.michael
 
                                     </span>

@@ -91,9 +91,10 @@ server {
 
     gzip on;
     gzip_vary on;
-    gzip_comp_level 4;
+    gzip_comp_level 6;
     gzip_min_length 256;
     gzip_types application/javascript application/json application/xml text/css text/plain text/xml image/svg+xml application/atom+xml application/ld+json font/opentype;
+    # text/html gzip'ится nginx-ом по умолчанию — перечислять не надо.
 
     fastcgi_hide_header X-Powered-By;
     client_max_body_size 64M;

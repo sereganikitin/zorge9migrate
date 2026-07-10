@@ -165,8 +165,10 @@ function load_overrides(PDO $pdo): array
 function apply_text_override(string $html, string $key, string $value): string
 {
     $quoted = preg_quote($key, '/');
+    // Match h1-h6, p, or span — span is used for annotations inside phrasing
+    // content where <p> would be invalid HTML (e.g. inside <button>/<span>).
     return (string) preg_replace_callback(
-        '/(<(?:h[1-6]|p)\b[^>]*data-cms-text-key="' . $quoted . '"[^>]*>)([\s\S]*?)(<\/(?:h[1-6]|p)>)/',
+        '/(<(?:h[1-6]|p|span)\b[^>]*data-cms-text-key="' . $quoted . '"[^>]*>)([\s\S]*?)(<\/(?:h[1-6]|p|span)>)/',
         static fn($m) => $m[1] . $value . $m[3],
         $html
     );
