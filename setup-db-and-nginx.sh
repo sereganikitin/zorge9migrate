@@ -112,7 +112,9 @@ server {
     location ~* ^.+\.(?:css|cur|js|jpg|jpeg|gif|htc|ico|png|html|otf|ttf|eot|woff|woff2|svg|mp4)$ {
         access_log off;
         expires 30d;
-        add_header Cache-Control private;
+        # `public` вместо `private` — эти файлы одинаковы для всех пользователей,
+        # можно кэшировать в общих кэшах (CDN, корпоративные прокси).
+        add_header Cache-Control "public, max-age=2592000";
     }
 
     # ───────── Symfony CMS admin (EasyAdmin) at /cms-admin/ ─────────
