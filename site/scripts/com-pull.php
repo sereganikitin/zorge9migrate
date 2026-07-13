@@ -539,6 +539,25 @@ foreach ($xml->offer as $o) {
     $apartments[$key] = $apt;
 }
 
+// --- Preserve fallout: apts, которые были в старом com.json, но не пришли
+// в свежем ProfitBase XML. Причина обычно вне нашего контроля: ProfitBase
+// иногда отсекает лоты (внутренние фильтры, транзитный EXECUTION-статус,
+// временно снятые offers, etc). Если такие лоты просто выкинуть, живые
+// страницы вроде /retail/commercial-rent/korpus6/floor3 внезапно теряют
+// свой единственный apt, хотя по факту он в profitbase остаётся свободен.
+// Сохраняем такие apts с их прошлым состоянием + пишем NOTICE в лог для
+// последующего аудита. Если лот действительно продан навсегда — вручную
+// удалить его из com.json (или из profitbase, тогда он не восстановится).
+$counts['preserved_missing'] = 0;
+foreach ($existing_apts as $old_key => $old_apt) {
+    if (isset($apartments[$old_key])) continue;
+    $apartments[$old_key] = $old_apt;
+    $counts['preserved_missing']++;
+    fwrite(STDERR, "[com-pull] NOTICE: preserving apt $old_key (id="
+        . ($old_apt['id'] ?? '?') . ", tr_n=" . ($old_apt['tr_n'] ?? '?')
+        . ") — not in current feed\n");
+}
+
 // Bridge: outline_editor рисует обводки в residential pipeline (outlines.json,
 // ключи b-f-n у data.json apartments). Для commercial apt-ов переводим их в
 // com.json-ключи и мерджим в $outlines_com (если в outlines_com.json не было
@@ -718,7 +737,8 @@ if (!write_atomic(COM_JSON_PATH, $json)) fail('write com.json failed');
 
 $elapsed = round(microtime(true) - $started, 2);
 $total = count($apartments);
-fwrite(STDOUT, "[com-pull] " . date('c') . " ok: $total apts ({$counts['preserved']} preserved, {$counts['new']} new), "
+fwrite(STDOUT, "[com-pull] " . date('c') . " ok: $total apts ({$counts['preserved']} preserved, {$counts['new']} new, "
+    . "{$counts['preserved_missing']} kept-from-old-not-in-feed), "
     . "skipped: status={$counts['skipped_status']} building={$counts['skipped_building']} no-n={$counts['skipped_n']} "
     . "collisions={$counts['collision']} | rasters: {$rasters_mirrored} mirrored, {$rasters_skipped} failed | "
     . "selections: $selections_written written, $selections_preserved preserved (hand-drawn) | "
