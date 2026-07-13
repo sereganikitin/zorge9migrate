@@ -94,18 +94,29 @@ body.modal-open { padding-right: 0 !important; }
 .tabs { padding-top: 12px !important; margin-bottom: 24px !important; }
 </style>
 <style id="z9-normalize">
-/* Уравнять внутренние отступы hero между /pent /office /retail
-   Образец — /office; здесь принудительно снимаем разницы,
-   которые появились в media.css legacy-лендингов. */
-#text53 {
-    padding-bottom: 100px !important;
+/* Уравнять hero-отступы между /pent /office /retail
+   Baseline — /office; здесь принудительно сбрасываем разницы
+   родительских контейнеров и задаём одинаковый padding-left на #text53. */
+.container-fluid.one-fifth-screen,
+.slider-text-middle-main,
+.slider-text-bottom,
+.col-lg-10.left-col {
     padding-left: 0 !important;
+    padding-right: 0 !important;
+    text-align: left !important;
+}
+#text53 {
+    padding-top: 0 !important;
+    padding-bottom: 100px !important;
+    padding-left: 40px !important;
+    padding-right: 20px !important;
     display: block !important;
     align-items: initial !important;
     flex-direction: initial !important;
+    text-align: left !important;
 }
 @media (max-width: 900px) {
-    #text53 { padding-bottom: 40px !important; }
+    #text53 { padding-bottom: 40px !important; padding-left: 20px !important; }
 }
 </style>
 </head>
