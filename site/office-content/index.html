@@ -95,44 +95,58 @@ body.modal-open { padding-right: 0 !important; }
 </style>
 <style id="z9-normalize">
 /* Уравнять hero-отступы между /pent /office /retail
-   Baseline — /office. Fix: жёстко прижимаем кнопочный блок к низу
-   через position: absolute bottom: 40px, чтобы разница в высоте контента
-   (у pent 3-строчный H1 + 1 кнопка; у office 1-строчный H1 + 2 кнопки)
-   не двигала позицию кнопок вверх. */
+   v5: pin #text53 напрямую к нижнему краю viewport через
+   position:absolute на самом #text53 + section как positioning root. */
+
+/* Section = anchor for absolute-positioned content, viewport-height */
+section {
+    position: relative !important;
+    display: block !important;
+    height: 100vh !important;
+    overflow: hidden !important;
+}
+
+/* Все обёртки — прозрачные и естественные */
 .container-fluid.one-fifth-screen,
 .slider-text-middle-main,
 .slider-text-bottom,
 .col-lg-10.left-col {
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    text-align: left !important;
-}
-.container-fluid.one-fifth-screen,
-.slider-text-middle-main {
-    position: relative !important;
-    height: 100vh !important;
-}
-.slider-text-bottom {
-    position: absolute !important;
-    bottom: 40px !important;
-    left: 0 !important;
-    right: 0 !important;
     display: block !important;
+    position: static !important;
+    height: auto !important;
     padding: 0 !important;
+    margin: 0 !important;
+    text-align: left !important;
+    width: 100% !important;
 }
+
+/* #text53 прибит абсолютно к нижнему левому углу section */
 #text53 {
-    padding: 0 20px 0 40px !important;
+    position: absolute !important;
+    left: 40px !important;
+    right: 40px !important;
+    bottom: 60px !important;
+    padding: 0 !important;
+    margin: 0 !important;
     display: block !important;
     align-items: initial !important;
     flex-direction: initial !important;
     text-align: left !important;
+    max-width: 800px !important;
 }
+
+/* Дети — обнулить их legacy padding-left */
 #text51, #text52, #btn21, #btn22 {
     padding-left: 0 !important;
 }
+
+/* Скрыть декоративную стрелку-вниз, если она мешает */
+.down-section {
+    display: none !important;
+}
+
 @media (max-width: 900px) {
-    .slider-text-bottom { bottom: 24px !important; }
-    #text53 { padding-left: 20px !important; }
+    #text53 { left: 20px !important; right: 20px !important; bottom: 30px !important; }
 }
 </style>
 </head>
