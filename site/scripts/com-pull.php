@@ -210,6 +210,14 @@ function parse_com_number_n(string $number): ?int {
         return 10;
     }
 
+    // Формат "X-Y" (например "2-3" из ProfitBase для Manhattan-этаж 2, позиция 3)
+    // → n = Y без умножения.  Существующие ключи в com.json для такого формата:
+    // 2-1-2-1, 2-1-2-2, 2-1-2-3, 3-1-2-12, 3-1-2-31 — n соответствует правой
+    // части номера напрямую.  Проверяем перед плоским числом, чтобы не пересечься.
+    if (preg_match('/^\d+-(\d+)$/', $number, $m)) {
+        return (int)$m[1];
+    }
+
     // Плоский номер "1", "4" и т.п. → ×10 (на основе паттернов из com.json b=13-1-2-4)
     if (preg_match('/^(\d+)$/', $number, $m)) {
         return ((int)$m[1]) * 10;
@@ -456,9 +464,28 @@ foreach ($xml->offer as $o) {
         }
     }
 
-    if (isset($apartments[$key])) {
+    if (isset($apartments[$key]) && $apartments[$key]['id'] !== $internal_id) {
+        // Коллизия ключа. Приоритет — preserved apt (тот, у кого id уже был
+        // в старом com.json). Так «жёсткие» ключи вроде К2_1А_03 не перезаписываются
+        // новыми SOLD-лотами, у которых ProfitBase выдал number="2-3" и парсер
+        // разложил его в тот же слот b-s-f-n.  Тихо если preserved!=new,
+        // WARN только если оба preserved или оба new.
+        $existing_id = (string) $apartments[$key]['id'];
+        $new_is_preserved = isset($id_to_key[$internal_id]);
+        $existing_is_preserved = isset($id_to_key[$existing_id]);
         $counts['collision']++;
-        fwrite(STDERR, "[com-pull] WARN: key collision $key (id=$internal_id)\n");
+        if ($existing_is_preserved && !$new_is_preserved) {
+            // Existing preserved > new — оставляем existing, пропускаем нового.
+            continue;
+        }
+        if (!$existing_is_preserved && $new_is_preserved) {
+            // New preserved > existing — перезаписываем существующий (last-wins).
+            // Продолжаем вниз без WARN.
+        } else {
+            // Оба preserved или оба new — реальный конфликт: два разных лота
+            // конкурируют за один ключ, оператору нужно вмешаться.
+            fwrite(STDERR, "[com-pull] WARN: unresolved key collision $key existing_id=$existing_id new_id=$internal_id\n");
+        }
     }
 
     // Цены
