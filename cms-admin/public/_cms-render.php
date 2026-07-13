@@ -30,6 +30,11 @@ const PAGE_MAP = [
     'request'        => 'request/index.html',
     'services'       => 'services/index.html',
     'style'          => 'style/index.html',
+    // Ex-/promo/* standalone landings, restored from git and moved here so
+    // they render as first-class landing pages (see setup-db-and-nginx.sh).
+    'pent'           => 'pent/index.html',
+    'office'         => 'office/index.html',
+    'retail'         => 'retail/index.html',
 ];
 
 $page = $_GET['page'] ?? '';

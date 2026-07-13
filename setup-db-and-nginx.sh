@@ -142,7 +142,7 @@ server {
     location = / {
         rewrite ^ /_cms-render.php?page= last;
     }
-    location ~ ^/(apartments|improvement|infrastructure|investment|location|management|parking|penthouses|privacy-policy|request|services|style)(?:/(?:index\.html)?)?$ {
+    location ~ ^/(apartments|improvement|infrastructure|investment|location|management|parking|penthouses|privacy-policy|request|services|style|pent|office|retail)(?:/(?:index\.html)?)?$ {
         rewrite ^/([^/]+).*$ /_cms-render.php?page=$1 last;
     }
 
