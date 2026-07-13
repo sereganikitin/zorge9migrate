@@ -78,8 +78,11 @@ body.modal-open { padding-right: 0 !important; }
 </style>
 <style id="z9-normalize">
 /* Уравнять hero-отступы между /pent /office /retail
-   Baseline — /office; здесь принудительно сбрасываем разницы
-   родительских контейнеров и задаём одинаковый padding-left на #text53. */
+   Baseline — /office. Раньше эти лендинги были full-width и в
+   media.css/media3.css у #text51/#text52/#btn21 был заложен
+   padding-left: 240–250px — под "боковую колонку" старого лендинга.
+   Сейчас лендинг рендерится в iframe СПРАВА от Wolf-сайдбара, и этот
+   левый отступ на детях создаёт лишний сдвиг ~200px. Обнуляем. */
 .container-fluid.one-fifth-screen,
 .slider-text-middle-main,
 .slider-text-bottom,
@@ -97,6 +100,11 @@ body.modal-open { padding-right: 0 !important; }
     align-items: initial !important;
     flex-direction: initial !important;
     text-align: left !important;
+}
+/* Дети #text53 — заголовок, подводка, кнопки — в старом лендинге
+   имели свой padding-left под колонку. Сбрасываем, наследуем от #text53. */
+#text51, #text52, #btn21, #btn22 {
+    padding-left: 0 !important;
 }
 @media (max-width: 900px) {
     #text53 { padding-bottom: 40px !important; padding-left: 20px !important; }
