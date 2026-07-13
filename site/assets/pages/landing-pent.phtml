@@ -1,15 +1,33 @@
-<?php /* Landing pent — iframe edge-to-edge с меню (left:22em совпадает с .menu_frame { width: 22em }) */ ?>
-<style>
-.landing-iframe-wrap {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 22em;
-  overflow: hidden;
-}
-.landing-iframe { display: block; width: 100%; height: 100%; border: 0; background: #000; }
-</style>
-<div class="landing-iframe-wrap">
-  <iframe class="landing-iframe" src="/promo/pent/" title="Пентхаусы — ЖК Зорге 9"></iframe>
+<?php /*
+    Landing office — restored to a normal Wolf-style content page.
+    Was previously iframe-embedding /promo/office/ (a standalone static
+    landing).  We retired /promo/* to 301-redirect back to /office etc.,
+    which turned the iframe into an infinite self-recursion — the outer
+    page rendered a second menu inside itself.
+    This template just renders the page's own Wolf content + a CTA.
+*/ ?>
+<?php if (!empty($this->content('h1'))): ?>
+    <h1 class="g-meta-hidden"><?= $this->content('h1'); ?></h1>
+<?php endif; ?>
+<div class="content">
+    <div class="text_scroll browser_scroll">
+        <div class="landing-standin">
+            <div class="landing-standin__inner">
+                <div class="landing-standin__title"><?= htmlspecialchars_decode($this->breadcrumb() ?: $this->title()); ?></div>
+                <?php if ($this->content('body')): ?>
+                    <div class="landing-standin__body"><?= $this->content('body'); ?></div>
+                <?php endif; ?>
+                <a href="/" class="landing-standin__cta pjax">Страница проекта ЖК Зорге 9 &nbsp;→</a>
+            </div>
+        </div>
+    </div>
 </div>
+<style>
+.landing-standin { padding: 8em 4em 4em; color: #fff; min-height: 100%; }
+.landing-standin__inner { max-width: 42em; }
+.landing-standin__title { font-size: 2.6em; line-height: 1.15; text-transform: uppercase; letter-spacing: .02em; margin-bottom: .8em; font-weight: 600; }
+.landing-standin__body { font-size: 1.05em; line-height: 1.55; margin-bottom: 2em; opacity: .85; }
+.landing-standin__body p { margin: 0 0 1em; }
+.landing-standin__cta { display: inline-block; background: #c7a55a; color: #111; padding: 1em 1.8em; text-decoration: none; border-radius: 4px; font-weight: 600; font-size: 1em; letter-spacing: .02em; text-transform: uppercase; transition: background .15s ease; }
+.landing-standin__cta:hover { background: #d8b96e; }
+</style>
