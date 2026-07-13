@@ -95,11 +95,10 @@ body.modal-open { padding-right: 0 !important; }
 </style>
 <style id="z9-normalize">
 /* Уравнять hero-отступы между /pent /office /retail
-   Baseline — /office. Раньше эти лендинги были full-width и в
-   media.css/media3.css у #text51/#text52/#btn21 был заложен
-   padding-left: 240–250px — под "боковую колонку" старого лендинга.
-   Сейчас лендинг рендерится в iframe СПРАВА от Wolf-сайдбара, и этот
-   левый отступ на детях создаёт лишний сдвиг ~200px. Обнуляем. */
+   Baseline — /office. Fix: жёстко прижимаем кнопочный блок к низу
+   через position: absolute bottom: 40px, чтобы разница в высоте контента
+   (у pent 3-строчный H1 + 1 кнопка; у office 1-строчный H1 + 2 кнопки)
+   не двигала позицию кнопок вверх. */
 .container-fluid.one-fifth-screen,
 .slider-text-middle-main,
 .slider-text-bottom,
@@ -108,23 +107,32 @@ body.modal-open { padding-right: 0 !important; }
     padding-right: 0 !important;
     text-align: left !important;
 }
+.container-fluid.one-fifth-screen,
+.slider-text-middle-main {
+    position: relative !important;
+    height: 100vh !important;
+}
+.slider-text-bottom {
+    position: absolute !important;
+    bottom: 40px !important;
+    left: 0 !important;
+    right: 0 !important;
+    display: block !important;
+    padding: 0 !important;
+}
 #text53 {
-    padding-top: 0 !important;
-    padding-bottom: 100px !important;
-    padding-left: 40px !important;
-    padding-right: 20px !important;
+    padding: 0 20px 0 40px !important;
     display: block !important;
     align-items: initial !important;
     flex-direction: initial !important;
     text-align: left !important;
 }
-/* Дети #text53 — заголовок, подводка, кнопки — в старом лендинге
-   имели свой padding-left под колонку. Сбрасываем, наследуем от #text53. */
 #text51, #text52, #btn21, #btn22 {
     padding-left: 0 !important;
 }
 @media (max-width: 900px) {
-    #text53 { padding-bottom: 40px !important; padding-left: 20px !important; }
+    .slider-text-bottom { bottom: 24px !important; }
+    #text53 { padding-left: 20px !important; }
 }
 </style>
 </head>
