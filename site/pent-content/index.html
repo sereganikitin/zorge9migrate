@@ -76,6 +76,21 @@ body.modal-open { padding-right: 0 !important; }
   footer.footer-standard-dark .text-dark-gray { text-align: center !important; }
 }
 </style>
+<style id="z9-normalize">
+/* Уравнять внутренние отступы hero между /pent /office /retail
+   Образец — /office; здесь принудительно снимаем разницы,
+   которые появились в media.css legacy-лендингов. */
+#text53 {
+    padding-bottom: 100px !important;
+    padding-left: 0 !important;
+    display: block !important;
+    align-items: initial !important;
+    flex-direction: initial !important;
+}
+@media (max-width: 900px) {
+    #text53 { padding-bottom: 40px !important; }
+}
+</style>
 </head>
 
 <body>
