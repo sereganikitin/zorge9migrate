@@ -11,13 +11,21 @@
 <title>ЖК Зорге 9 — апартаменты бизнес-класса у м. Полежаевская</title>
 <link crossorigin="" href="https://storage.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://mc.yandex.ru/" rel="preconnect"/>
-<!-- Preload hero LCP-картинки под каждый viewport-размер.  Только один
-     из этих preload'ов реально загрузится — тот, чей media-query активен.
-     Это критично для mobile LCP: без preload она грузилась ~13 сек. -->
+<!-- Preload hero LCP-картинок под каждый viewport-размер.  Активен только
+     тот preload, чей media-query совпадает.  Preload'им ДВА hero-элемента:
+     1. `background night` — фон всего первого экрана (~100 КБ)
+     2. `decor` — крупный photo-cutout с моделью, тоже full-viewport (~60 КБ)
+     PageSpeed выбирает LCP-элемент по размеру/видимости — может оказаться
+     любой из двух, поэтому подстраховываемся оба.  Общий вес preload'ов
+     на mobile ≈ 160 КБ. -->
 <link rel="preload" as="image" fetchpriority="high" media="(max-width: 567px)" href="/assets/images/media/landing/1.intro/xs-background-night.webp"/>
 <link rel="preload" as="image" fetchpriority="high" media="(min-width: 568px) and (max-width: 1439px)" href="/media/cache/homepage_intro_bg_md/uploads/backgroundnight_1758120023.webp"/>
 <link rel="preload" as="image" fetchpriority="high" media="(min-width: 1440px) and (max-width: 1919px)" href="/media/cache/homepage_intro_bg_xxl/uploads/backgroundnight_1758120023.webp"/>
 <link rel="preload" as="image" fetchpriority="high" media="(min-width: 1920px)" href="/media/cache/homepage_intro_bg_xxxl/uploads/backgroundnight_1758120023.webp"/>
+<link rel="preload" as="image" fetchpriority="high" media="(max-width: 567px)" href="/assets/images/media/landing/1.intro/decor-xs.webp?v=1779096399"/>
+<link rel="preload" as="image" fetchpriority="high" media="(min-width: 568px) and (max-width: 1439px)" href="/assets/images/media/landing/1.intro/decor@md.webp?v=1779096399"/>
+<link rel="preload" as="image" fetchpriority="high" media="(min-width: 1440px) and (max-width: 1919px)" href="/assets/images/media/landing/1.intro/decor@xxl.webp?v=1779096399"/>
+<link rel="preload" as="image" fetchpriority="high" media="(min-width: 1920px)" href="/assets/images/media/landing/1.intro/decor@xxxl.webp?v=1779096399"/>
 <style>
                 body { background: #ffffff; color: #ffffff; }
                 a { color: #ffffff; }
@@ -233,7 +241,7 @@ utmSave
 </div>
 </div>
 <div class="intro__back ui-background is-hidden--sm-down" data-reveal="intro-back" data-reveal-delay="0" data-reveal-distance="0" data-reveal-visible=""></div>
-<picture class="intro__decor img-full" data-cms-img-key="i-23534a6685" data-reveal="intro-decor" data-reveal-distance="0" draggable="false"> <source height="1388" media="(min-width: 1920px) and (min-height: 700px)" srcset="/assets/images/media/landing/1.intro/decor@xxxl.webp?v=1779096399" width="1282"/> <source height="1092" media="(min-width: 1440px) and (min-height: 700px)" srcset="/assets/images/media/landing/1.intro/decor@xxl.webp?v=1779096399" width="1008"/> <source height="780" media="(min-width: 568px) and (max-aspect-ratio: 13 / 9), (min-width: 668px) and (min-height: 416px), (min-width: 980px)" srcset="/assets/images/media/landing/1.intro/decor@md.webp?v=1779096399" width="720"/>
+<picture class="intro__decor img-full" data-cms-img-key="i-23534a6685" draggable="false"> <source height="1388" media="(min-width: 1920px) and (min-height: 700px)" srcset="/assets/images/media/landing/1.intro/decor@xxxl.webp?v=1779096399" width="1282"/> <source height="1092" media="(min-width: 1440px) and (min-height: 700px)" srcset="/assets/images/media/landing/1.intro/decor@xxl.webp?v=1779096399" width="1008"/> <source height="780" media="(min-width: 568px) and (max-aspect-ratio: 13 / 9), (min-width: 668px) and (min-height: 416px), (min-width: 980px)" srcset="/assets/images/media/landing/1.intro/decor@md.webp?v=1779096399" width="720"/>
 <img alt="" draggable="false" height="400" src="/assets/images/media/landing/1.intro/decor-xs.webp?v=1779096399" width="360"/>
 </picture>
 <div class="intro__content row">
