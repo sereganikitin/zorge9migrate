@@ -11,13 +11,26 @@
 <title>ЖК Зорге 9 — апартаменты бизнес-класса у м. Полежаевская</title>
 <link crossorigin="" href="https://storage.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://mc.yandex.ru/" rel="preconnect"/>
+<!-- Preload hero LCP-картинки под каждый viewport-размер.  Только один
+     из этих preload'ов реально загрузится — тот, чей media-query активен.
+     Это критично для mobile LCP: без preload она грузилась ~13 сек. -->
+<link rel="preload" as="image" fetchpriority="high" media="(max-width: 567px)" href="/assets/images/media/landing/1.intro/xs-background-night.webp"/>
+<link rel="preload" as="image" fetchpriority="high" media="(min-width: 568px) and (max-width: 1439px)" href="/media/cache/homepage_intro_bg_md/uploads/backgroundnight_1758120023.webp"/>
+<link rel="preload" as="image" fetchpriority="high" media="(min-width: 1440px) and (max-width: 1919px)" href="/media/cache/homepage_intro_bg_xxl/uploads/backgroundnight_1758120023.webp"/>
+<link rel="preload" as="image" fetchpriority="high" media="(min-width: 1920px)" href="/media/cache/homepage_intro_bg_xxxl/uploads/backgroundnight_1758120023.webp"/>
 <style>
                 body { background: #ffffff; color: #ffffff; }
                 a { color: #ffffff; }
                 .js.not-ready, .js.not-ready * { transition: none !important; }
             </style>
+<!-- global.css остаётся блокирующим — от него зависит базовый layout hero.
+     landing.css содержит доп. стили ниже первого экрана — грузим асинхронно
+     через media="print" swap: браузер тянет с low-priority без блокировки
+     рендера, потом onload меняет media на all и стили применяются.  Для
+     клиентов без JS есть <noscript> fallback. -->
 <link href="/assets/stylesheets/global.css?v=1779096399" rel="stylesheet"/>
-<link href="/assets/stylesheets/landing.css?v=1779096399" rel="stylesheet"/>
+<link href="/assets/stylesheets/landing.css?v=1779096399" rel="stylesheet" media="print" onload="this.media='all'; this.onload=null"/>
+<noscript><link href="/assets/stylesheets/landing.css?v=1779096399" rel="stylesheet"/></noscript>
 <script>
             document.documentElement.classList.remove('no-js');
             document.documentElement.classList.add('js');
@@ -8298,7 +8311,7 @@ cookie
 </button>
 </div>
 <script async="" fetchpriority="low" src="/assets/javascripts/browser-message/browser-message.js?v=1779096399"></script>
-<script fetchpriority="low" src="/assets/javascripts/shared.js?v=1779096399"></script>
+<script defer fetchpriority="low" src="/assets/javascripts/shared.js?v=1779096399"></script>
 <script>
                                                 var LOCALES = {
                                     'errors': {
@@ -8315,6 +8328,6 @@ cookie
                     }
                             };
         </script>
-<script src="/assets/javascripts/landing.js?v=1779096399"></script>
+<script defer fetchpriority="low" src="/assets/javascripts/landing.js?v=1779096399"></script>
 </body>
 </html>
