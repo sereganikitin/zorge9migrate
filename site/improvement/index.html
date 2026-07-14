@@ -54,21 +54,39 @@
 <meta content="ЖК Зорге 9 — апартаменты бизнес-класса у м. Полежаевская" name="twitter:title"/>
 <meta content="Дом готов. Квартал с частным парком 2 га, фитнес-клубом 3000 м² и бассейном 25 м., рассрочка 0 %, 5 мин до метро и ТТК." name="twitter:description"/>
 <meta content="https://zorge9.com/assets/manifest/og-twitter.png" name="twitter:image"/>
-<script type="text/javascript">
-        (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
-        m[i].l=1*new Date();
-        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
-        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
-        (window, document, "script", "https://mc.yandex.ru/metrika/tag.js?id=48426239", "ym");
-
-        ym('48426239', "init", {
-            ssr:true,
-            clickmap: true,
-            trackLinks: true,
-            accurateTrackBounce: true,
-            webvisor: true,
-            ecommerce:"dataLayer",
-        });
+<script>
+        /* Lazy Yandex Metrika loader — original config preserved, launch deferred.
+           Fires on first user interaction OR requestIdleCallback (fallback: setTimeout 3s).
+           Frees main thread during initial paint → measurable TBT/LCP win. */
+        (function(){
+            var m=window, i='ym';
+            m[i] = m[i] || function(){ (m[i].a = m[i].a || []).push(arguments) };
+            m[i].l = 1*new Date();
+            var loaded = false;
+            function load(){
+                if (loaded) return; loaded = true;
+                var k = document.createElement('script');
+                k.async = 1;
+                k.src = 'https://mc.yandex.ru/metrika/tag.js?id=48426239';
+                var a = document.getElementsByTagName('script')[0];
+                a.parentNode.insertBefore(k, a);
+                ym('48426239', 'init', {
+                    ssr: true,
+                    clickmap: true,
+                    trackLinks: true,
+                    accurateTrackBounce: true,
+                    webvisor: true,
+                    ecommerce: 'dataLayer'
+                });
+            }
+            var evs = ['scroll','mousedown','touchstart','keydown','pointermove'];
+            evs.forEach(function(e){ window.addEventListener(e, load, {once:true, passive:true}); });
+            if ('requestIdleCallback' in window) {
+                requestIdleCallback(load, {timeout: 3000});
+            } else {
+                setTimeout(load, 3000);
+            }
+        })();
     </script>
 <script>
     (function(w,d,n,c){w.CalltouchDataObject=n;w[n]=function(){w[n]["callbacks"].push(arguments)}

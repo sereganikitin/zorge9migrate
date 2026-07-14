@@ -50,21 +50,39 @@
 <meta content="Престижный квартал апартаментов на Ходынке. Официальный сайт" name="twitter:title"/>
 <meta content="Зорге 9 — эксклюзивный комплекс апартаментов в стиле Нью-Йорка на престижной Ходынке. Роскошные интерьеры, сервис пятизвездочного отеля, собственный парк, фитнес-центр для резидентов. Почувствуйте себя на высоте привилегий" name="twitter:description"/>
 <meta content="https://zorge9.com/assets/manifest/og-twitter.png" name="twitter:image"/>
-<script type="text/javascript">
-        (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
-        m[i].l=1*new Date();
-        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
-        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
-        (window, document, "script", "https://mc.yandex.ru/metrika/tag.js?id=48426239", "ym");
-
-        ym('48426239', "init", {
-            ssr:true,
-            clickmap: true,
-            trackLinks: true,
-            accurateTrackBounce: true,
-            webvisor: true,
-            ecommerce:"dataLayer",
-        });
+<script>
+        /* Lazy Yandex Metrika loader — original config preserved, launch deferred.
+           Fires on first user interaction OR requestIdleCallback (fallback: setTimeout 3s).
+           Frees main thread during initial paint → measurable TBT/LCP win. */
+        (function(){
+            var m=window, i='ym';
+            m[i] = m[i] || function(){ (m[i].a = m[i].a || []).push(arguments) };
+            m[i].l = 1*new Date();
+            var loaded = false;
+            function load(){
+                if (loaded) return; loaded = true;
+                var k = document.createElement('script');
+                k.async = 1;
+                k.src = 'https://mc.yandex.ru/metrika/tag.js?id=48426239';
+                var a = document.getElementsByTagName('script')[0];
+                a.parentNode.insertBefore(k, a);
+                ym('48426239', 'init', {
+                    ssr: true,
+                    clickmap: true,
+                    trackLinks: true,
+                    accurateTrackBounce: true,
+                    webvisor: true,
+                    ecommerce: 'dataLayer'
+                });
+            }
+            var evs = ['scroll','mousedown','touchstart','keydown','pointermove'];
+            evs.forEach(function(e){ window.addEventListener(e, load, {once:true, passive:true}); });
+            if ('requestIdleCallback' in window) {
+                requestIdleCallback(load, {timeout: 3000});
+            } else {
+                setTimeout(load, 3000);
+            }
+        })();
     </script>
 <script>
     (function(w,d,n,c){w.CalltouchDataObject=n;w[n]=function(){w[n]["callbacks"].push(arguments)}
