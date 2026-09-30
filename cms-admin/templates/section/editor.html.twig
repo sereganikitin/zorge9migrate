@@ -187,7 +187,7 @@
                         {% set other_sections = ib.sections|filter(s => s != section_id and s != 'unknown') %}
                         <div class="image-block">
                             <div class="preview">
-                                <img src="{{ src }}" alt="{{ ib.alt ?: ib.label }}">
+                                <img src="{{ src }}" alt="{{ ib.alt ?: ib.label }}" loading="lazy" decoding="async">
                                 <a class="download-current" href="{{ src }}" download="{{ download_name }}" title="Скачать текущее фото">
                                     <i class="fa fa-download"></i> Скачать
                                 </a>
@@ -215,7 +215,7 @@
                                 <div class="variant-label">Мобильная версия {% if has_mobile_override %} <span class="replaced">(загружено)</span>{% endif %}</div>
                                 {% if has_mobile_override %}
                                     <div class="variant-row">
-                                        <div class="variant-preview"><img src="{{ mobile_src }}" alt=""></div>
+                                        <div class="variant-preview"><img src="{{ mobile_src }}" alt="" loading="lazy" decoding="async"></div>
                                         <div style="flex:1">
                                             <input type="file" name="image_file_mobile[{{ ib.id }}]" accept="image/*">
                                             <div class="controls">

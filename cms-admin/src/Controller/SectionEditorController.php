@@ -65,6 +65,23 @@ class SectionEditorController extends AbstractController
         $resetImages = $request->request->all('image_reset');
         $resetImagesMobile = $request->request->all('image_reset_mobile');
 
+        $uploadedFiles = $request->files->all('image_file');
+        $uploadedMobileFiles = $request->files->all('image_file_mobile');
+
+        // Load every touched block in one query per table. Without this each
+        // find() below is a separate SELECT — a section with a few hundred
+        // blocks turned a single save into hundreds of round-trips.
+        $textIds = array_map('intval', array_keys($textsInput + $resetTexts));
+        if ($textIds) {
+            $textRepo->findBy(['id' => $textIds]);
+        }
+        $imageIds = array_map('intval', array_keys(
+            $imageAltInput + $resetImages + $resetImagesMobile + $uploadedFiles + $uploadedMobileFiles
+        ));
+        if ($imageIds) {
+            $this->fetchImageBlocks($imageIds);
+        }
+
         $updated = 0;
 
         foreach ($textsInput as $id => $value) {
@@ -87,7 +104,6 @@ class SectionEditorController extends AbstractController
         }
 
         // Image uploads (desktop)
-        $uploadedFiles = $request->files->all('image_file');
         foreach ($uploadedFiles as $id => $file) {
             if (!$file instanceof UploadedFile) continue;
             $ib = $imageRepo->find((int) $id);
@@ -108,7 +124,6 @@ class SectionEditorController extends AbstractController
         }
 
         // Image uploads (mobile) — separate file applied only on small viewports.
-        $uploadedMobileFiles = $request->files->all('image_file_mobile');
         foreach ($uploadedMobileFiles as $id => $file) {
             if (!$file instanceof UploadedFile) continue;
             $ib = $imageRepo->find((int) $id);
@@ -223,6 +238,28 @@ class SectionEditorController extends AbstractController
             'is_unknown' => $section === 'unknown' ? 1 : 0,
         ]);
         if (!$ids) return [];
-        return $this->em->getRepository(ImageBlock::class)->findBy(['id' => $ids], ['id' => 'ASC']);
+        return $this->fetchImageBlocks($ids);
+    }
+
+    /**
+     * Image blocks with both media relations fetch-joined — the template reads
+     * ib.media / ib.mediaMobile for every block, which otherwise lazy-loads
+     * one MediaItem per block (N+1).
+     *
+     * @param list<int|string> $ids
+     * @return list<ImageBlock>
+     */
+    private function fetchImageBlocks(array $ids): array
+    {
+        return $this->em->createQueryBuilder()
+            ->select('ib', 'm', 'mm')
+            ->from(ImageBlock::class, 'ib')
+            ->leftJoin('ib.media', 'm')
+            ->leftJoin('ib.mediaMobile', 'mm')
+            ->where('ib.id IN (:ids)')
+            ->setParameter('ids', array_map('intval', $ids))
+            ->orderBy('ib.id', 'ASC')
+            ->getQuery()
+            ->getResult();
     }
 }

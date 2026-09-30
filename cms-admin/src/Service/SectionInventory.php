@@ -3,6 +3,8 @@
 namespace App\Service;
 
 use Doctrine\DBAL\Connection;
+use Symfony\Contracts\Cache\CacheInterface;
+use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\Service\ResetInterface;
 
 /**
@@ -10,16 +12,23 @@ use Symfony\Contracts\Service\ResetInterface;
  * editable block. Used by the dashboard sidebar to hide empty sections,
  * and by the section editor to render contents.
  *
- * Cached in-memory for the lifetime of one request — admin pages always
- * trigger at most a couple of these calls per request, so the cost is
- * one (small) SQL query per request.
+ * The query unpacks the JSON `sections` column of every text/image block,
+ * so it is a full scan of both tables. Section membership only changes when
+ * app:seed-from-manifest runs, so the result is kept in cache.app for a few
+ * minutes (cache:clear after seeding drops it) plus in-memory per request.
  */
 final class SectionInventory implements ResetInterface
 {
     /** @var array<string,int>|null */
     private ?array $cache = null;
 
-    public function __construct(private readonly Connection $conn) {}
+    private const CACHE_KEY = 'section_inventory_counts';
+    private const CACHE_TTL = 600;
+
+    public function __construct(
+        private readonly Connection $conn,
+        private readonly CacheInterface $appCache,
+    ) {}
 
     /** @return array<string,int> Map of section ID → number of blocks in it. */
     public function counts(): array
@@ -27,6 +36,15 @@ final class SectionInventory implements ResetInterface
         if ($this->cache !== null) {
             return $this->cache;
         }
+        return $this->cache = $this->appCache->get(self::CACHE_KEY, function (ItemInterface $item): array {
+            $item->expiresAfter(self::CACHE_TTL);
+            return $this->query();
+        });
+    }
+
+    /** @return array<string,int> */
+    private function query(): array
+    {
         $sql = <<<'SQL'
             SELECT s.section, COUNT(*) AS n
             FROM (
@@ -46,7 +64,6 @@ final class SectionInventory implements ResetInterface
         foreach ($rows as $row) {
             $out[(string) $row['section']] = (int) $row['n'];
         }
-        $this->cache = $out;
         return $out;
     }
 
